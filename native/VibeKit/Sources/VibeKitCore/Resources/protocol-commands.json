@@ -1,0 +1,2480 @@
+{
+  "commands": [
+    {
+      "name": "dongleAuthMessage:",
+      "header": [
+        6,
+        2,
+        5,
+        1
+      ],
+      "header_hex": "06 02 05 01",
+      "direction": "get",
+      "payload_at": "0xc, 0xd, 0xe, 0xf, 0x10",
+      "args": [
+        {
+          "arg": 1,
+          "wire": 5,
+          "width": 1
+        }
+      ],
+      "response": {
+        "raw": true
+      }
+    },
+    {
+      "name": "getDongleVersionMessage",
+      "header": [
+        6,
+        2,
+        3,
+        1
+      ],
+      "header_hex": "06 02 03 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "raw": true
+      }
+    },
+    {
+      "name": "getDongleFlashIdMessage",
+      "header": [
+        6,
+        2,
+        11,
+        1
+      ],
+      "header_hex": "06 02 0b 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "raw": true
+      }
+    },
+    {
+      "name": "getDeviceActiveMessage",
+      "header": [
+        6,
+        3,
+        10,
+        1
+      ],
+      "header_hex": "06 03 0a 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "raw": true
+      }
+    },
+    {
+      "name": "getDeviceStandbyStatusMessage",
+      "header": [
+        1,
+        1,
+        13,
+        1
+      ],
+      "header_hex": "01 01 0d 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "fields": [
+          {
+            "name": "standby",
+            "off": 0,
+            "width": 1,
+            "enc": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "setDeviceStandbyStatusMessage:",
+      "header": [
+        1,
+        1,
+        13,
+        0
+      ],
+      "header_hex": "01 01 0d 00",
+      "direction": "set",
+      "payload_at": "0xc",
+      "args": [
+        {
+          "arg": 1,
+          "wire": 4,
+          "width": 1
+        }
+      ]
+    },
+    {
+      "name": "getDeviceVersionMessage",
+      "header": [
+        1,
+        4,
+        4,
+        1
+      ],
+      "header_hex": "01 04 04 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "fields": [
+          {
+            "name": "version",
+            "off": 6,
+            "width": 3,
+            "enc": "ver3(b6.b7.b8)"
+          }
+        ]
+      }
+    },
+    {
+      "name": "getDeviceHardwareVersionMessage",
+      "header": [
+        1,
+        1,
+        65,
+        1
+      ],
+      "header_hex": "01 01 41 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "raw": true
+      }
+    },
+    {
+      "name": "getDeviceFlashIdMessage",
+      "header": [
+        1,
+        4,
+        11,
+        1
+      ],
+      "header_hex": "01 04 0b 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "raw": true
+      }
+    },
+    {
+      "name": "getDongleSNMessage",
+      "header": [
+        6,
+        2,
+        129,
+        1
+      ],
+      "header_hex": "06 02 81 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "raw": true
+      }
+    },
+    {
+      "name": "setDongleSNMessage:",
+      "header": [
+        30,
+        0,
+        129,
+        0
+      ],
+      "header_hex": "1e 00 81 00",
+      "direction": "set",
+      "payload_at": "0x4c",
+      "args": []
+    },
+    {
+      "name": "getDeviceSNMessage",
+      "header": [
+        1,
+        1,
+        11,
+        1
+      ],
+      "header_hex": "01 01 0b 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "chunked": "[len,seg,ascii] 多帧拼接"
+      }
+    },
+    {
+      "name": "setDeviceSNMessage:code:length:",
+      "header": [
+        1,
+        1,
+        11,
+        4
+      ],
+      "header_hex": "01 01 0b 04",
+      "direction": "set",
+      "payload_at": "0x4d, 0x4c",
+      "args": [
+        {
+          "arg": 1,
+          "wire": 69,
+          "width": 1
+        },
+        {
+          "arg": 3,
+          "wire": 68,
+          "width": 1
+        }
+      ],
+      "variable": true
+    },
+    {
+      "name": "getDeviceUUIDMessage",
+      "header": [
+        1,
+        1,
+        10,
+        1
+      ],
+      "header_hex": "01 01 0a 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "chunked": "[len,seg,ascii] 多帧拼接"
+      }
+    },
+    {
+      "name": "setDeviceUUIDMessage:uuid:length:",
+      "header": [
+        1,
+        1,
+        10,
+        4
+      ],
+      "header_hex": "01 01 0a 04",
+      "direction": "set",
+      "payload_at": "0x4c, 0x4d",
+      "args": [
+        {
+          "arg": 3,
+          "wire": 68,
+          "width": 1
+        },
+        {
+          "arg": 1,
+          "wire": 69,
+          "width": 1
+        }
+      ],
+      "variable": true
+    },
+    {
+      "name": "getDeviceMacAddressMessage",
+      "header": [
+        1,
+        1,
+        250,
+        1
+      ],
+      "header_hex": "01 01 fa 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "fields": [
+          {
+            "name": "mac",
+            "off": 0,
+            "width": 6,
+            "enc": "mac6"
+          }
+        ]
+      }
+    },
+    {
+      "name": "getDeviceBatteryMessage",
+      "header": [
+        1,
+        1,
+        2,
+        1
+      ],
+      "header_hex": "01 01 02 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "fields": [
+          {
+            "name": "voltage_mV",
+            "off": 0,
+            "width": 2,
+            "enc": "u16le"
+          },
+          {
+            "name": "percent",
+            "off": 2,
+            "width": 1,
+            "enc": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "getDeviceChargingStatusMessage",
+      "header": [
+        6,
+        8,
+        2,
+        1
+      ],
+      "header_hex": "06 08 02 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "raw": true
+      }
+    },
+    {
+      "name": "getDeviceBrightnessMessage",
+      "header": [
+        1,
+        6,
+        32,
+        1
+      ],
+      "header_hex": "01 06 20 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "fields": [
+          {
+            "name": "brightness",
+            "off": 0,
+            "width": 1,
+            "enc": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "setDeviceBrightnessMessage:",
+      "header": [
+        1,
+        6,
+        32,
+        4
+      ],
+      "header_hex": "01 06 20 04",
+      "direction": "set",
+      "payload_at": "0xc",
+      "args": [
+        {
+          "arg": 1,
+          "wire": 4,
+          "width": 1
+        }
+      ]
+    },
+    {
+      "name": "getDeviceAllDpiMessage",
+      "header": [
+        1,
+        6,
+        19,
+        1
+      ],
+      "header_hex": "01 06 13 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "raw": true
+      }
+    },
+    {
+      "name": "setDeviceDpiMessage:currentLevel:currentValue:",
+      "header": [
+        1,
+        6,
+        18,
+        4
+      ],
+      "header_hex": "01 06 12 04",
+      "direction": "set",
+      "payload_at": "0xc, 0xd",
+      "args": [
+        {
+          "arg": 1,
+          "wire": 4,
+          "width": 1
+        },
+        {
+          "arg": 2,
+          "wire": 5,
+          "width": 1
+        },
+        {
+          "arg": 3,
+          "wire": 6,
+          "width": 2
+        }
+      ]
+    },
+    {
+      "name": "getDeviceAIButtonFuncMessage",
+      "header": [
+        1,
+        6,
+        33,
+        1
+      ],
+      "header_hex": "01 06 21 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "fields": [
+          {
+            "name": "field1",
+            "off": 0,
+            "width": 1,
+            "enc": "u8 le"
+          }
+        ],
+        "from_set": "setDeviceAIButtonFuncMessage:"
+      }
+    },
+    {
+      "name": "setDeviceAIButtonFuncMessage:",
+      "header": [
+        1,
+        6,
+        33,
+        4
+      ],
+      "header_hex": "01 06 21 04",
+      "direction": "set",
+      "payload_at": "0xc",
+      "args": [
+        {
+          "arg": 1,
+          "wire": 4,
+          "width": 1
+        }
+      ]
+    },
+    {
+      "name": "getDeviceSupportButtonFuncMessage",
+      "header": [
+        1,
+        6,
+        56,
+        1
+      ],
+      "header_hex": "01 06 38 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "raw": true
+      }
+    },
+    {
+      "name": "getDeviceAllButtonFuncMessage",
+      "header": [
+        1,
+        6,
+        49,
+        1
+      ],
+      "header_hex": "01 06 31 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "raw": true
+      }
+    },
+    {
+      "name": "getDeviceButtonFuncMessage:",
+      "header": [
+        1,
+        6,
+        16,
+        1
+      ],
+      "header_hex": "01 06 10 01",
+      "direction": "get",
+      "payload_at": "0xd",
+      "args": [
+        {
+          "arg": 1,
+          "wire": 5,
+          "width": 1
+        }
+      ],
+      "response": {
+        "fields": [
+          {
+            "name": "field1",
+            "off": 1,
+            "width": 1,
+            "enc": "u8 le"
+          }
+        ],
+        "from_set": "setDeviceButtonFuncMessage:funcIndex:"
+      }
+    },
+    {
+      "name": "setDeviceButtonFuncMessage:funcIndex:",
+      "header": [
+        1,
+        6,
+        16,
+        4
+      ],
+      "header_hex": "01 06 10 04",
+      "direction": "set",
+      "payload_at": "0xd",
+      "args": [
+        {
+          "arg": 1,
+          "wire": 5,
+          "width": 1
+        }
+      ]
+    },
+    {
+      "name": "getDeviceScreenShutdownTimeMessage",
+      "header": [
+        1,
+        6,
+        34,
+        1
+      ],
+      "header_hex": "01 06 22 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "fields": [
+          {
+            "name": "value",
+            "off": 0,
+            "width": 4,
+            "enc": "u32le"
+          }
+        ],
+        "note": "u32，据结构目录修正(此前误按u16)"
+      }
+    },
+    {
+      "name": "setDeviceScreenShutdownTimeMessage:",
+      "header": [
+        1,
+        6,
+        34,
+        4
+      ],
+      "header_hex": "01 06 22 04",
+      "direction": "set",
+      "payload_at": "—",
+      "args": [],
+      "note": "宽度按 ObjC 结构 sys_custom_*_t=I(u32) 修正"
+    },
+    {
+      "name": "getDeviceReportRateMessage",
+      "header": [
+        1,
+        6,
+        13,
+        1
+      ],
+      "header_hex": "01 06 0d 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "fields": [
+          {
+            "name": "field1",
+            "off": 0,
+            "width": 1,
+            "enc": "u8 le"
+          }
+        ],
+        "from_set": "setDeviceReportRateMessage:"
+      }
+    },
+    {
+      "name": "setDeviceReportRateMessage:",
+      "header": [
+        1,
+        6,
+        13,
+        4
+      ],
+      "header_hex": "01 06 0d 04",
+      "direction": "set",
+      "payload_at": "0xc",
+      "args": [
+        {
+          "arg": 1,
+          "wire": 4,
+          "width": 1
+        }
+      ]
+    },
+    {
+      "name": "quitMacHostClrSuspendedMessage",
+      "header": [
+        1,
+        1,
+        0,
+        0
+      ],
+      "header_hex": "01 01 00 00",
+      "direction": "set",
+      "payload_at": "0xa",
+      "same_header_count": 17,
+      "args": []
+    },
+    {
+      "name": "getDeviceLedEffectMessage",
+      "header": [
+        1,
+        6,
+        17,
+        1
+      ],
+      "header_hex": "01 06 11 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "fields": [
+          {
+            "name": "effect",
+            "off": 0,
+            "width": 1,
+            "enc": "u8"
+          },
+          {
+            "name": "speed",
+            "off": 1,
+            "width": 1,
+            "enc": "u8"
+          },
+          {
+            "name": "bright",
+            "off": 2,
+            "width": 1,
+            "enc": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "getDeviceSupportLedEffectMessage",
+      "header": [
+        1,
+        6,
+        57,
+        1
+      ],
+      "header_hex": "01 06 39 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "raw": true
+      }
+    },
+    {
+      "name": "setDeviceLedEffectMessage:speed:bright:red:green:blue:",
+      "header": [
+        1,
+        6,
+        17,
+        4
+      ],
+      "header_hex": "01 06 11 04",
+      "direction": "set",
+      "payload_at": "0xd, 0xe, 0xf, 0x11, 0x12, 0x13",
+      "args": [
+        {
+          "arg": 1,
+          "wire": 5,
+          "width": 1
+        },
+        {
+          "arg": 2,
+          "wire": 6,
+          "width": 1
+        },
+        {
+          "arg": 3,
+          "wire": 7,
+          "width": 1
+        },
+        {
+          "arg": 4,
+          "wire": 9,
+          "width": 1
+        },
+        {
+          "arg": 5,
+          "wire": 10,
+          "width": 1
+        },
+        {
+          "arg": 6,
+          "wire": 11,
+          "width": 1
+        }
+      ]
+    },
+    {
+      "name": "getDeviceSupportMicrophoneMessage",
+      "header": [
+        1,
+        6,
+        55,
+        1
+      ],
+      "header_hex": "01 06 37 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "raw": true
+      }
+    },
+    {
+      "name": "getDeviceMicrophoneEnableMessage",
+      "header": [
+        1,
+        1,
+        42,
+        1
+      ],
+      "header_hex": "01 01 2a 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "fields": [
+          {
+            "name": "enabled",
+            "off": 0,
+            "width": 1,
+            "enc": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "setDeviceMicrophoneEnableMessage:",
+      "header": [
+        1,
+        1,
+        42,
+        0
+      ],
+      "header_hex": "01 01 2a 00",
+      "direction": "set",
+      "payload_at": "0xc",
+      "args": [
+        {
+          "arg": 1,
+          "wire": 4,
+          "width": 1
+        }
+      ]
+    },
+    {
+      "name": "getDeviceMicrophoneUIFlickModeMessage",
+      "header": [
+        1,
+        6,
+        36,
+        1
+      ],
+      "header_hex": "01 06 24 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "fields": [
+          {
+            "name": "field1",
+            "off": 0,
+            "width": 1,
+            "enc": "u8 le"
+          }
+        ],
+        "from_set": "setDeviceMicrophoneUIFlickModeMessage:"
+      }
+    },
+    {
+      "name": "setDeviceMicrophoneUIFlickModeMessage:",
+      "header": [
+        1,
+        6,
+        36,
+        2
+      ],
+      "header_hex": "01 06 24 02",
+      "direction": "set",
+      "payload_at": "0xc",
+      "args": [
+        {
+          "arg": 1,
+          "wire": 4,
+          "width": 1
+        }
+      ]
+    },
+    {
+      "name": "getDeviceStandbyTimeMessage",
+      "header": [
+        1,
+        1,
+        44,
+        1
+      ],
+      "header_hex": "01 01 2c 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "fields": [
+          {
+            "name": "value",
+            "off": 0,
+            "width": 4,
+            "enc": "u32le"
+          }
+        ],
+        "note": "u32，据结构目录修正(此前误按u16)"
+      }
+    },
+    {
+      "name": "setDeviceStandbyTimeMessage:",
+      "header": [
+        1,
+        1,
+        44,
+        2
+      ],
+      "header_hex": "01 01 2c 02",
+      "direction": "set",
+      "payload_at": "—",
+      "args": [],
+      "note": "宽度按 ObjC 结构 sys_custom_*_t=I(u32) 修正"
+    },
+    {
+      "name": "getDeviceSleepTimeMessage",
+      "header": [
+        1,
+        1,
+        66,
+        1
+      ],
+      "header_hex": "01 01 42 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "fields": [
+          {
+            "name": "value",
+            "off": 0,
+            "width": 4,
+            "enc": "u32le"
+          }
+        ],
+        "note": "u32，据结构目录修正(此前误按u16)"
+      }
+    },
+    {
+      "name": "setDeviceSleepTimeMessage:",
+      "header": [
+        1,
+        1,
+        66,
+        2
+      ],
+      "header_hex": "01 01 42 02",
+      "direction": "set",
+      "payload_at": "—",
+      "args": [],
+      "note": "宽度按 ObjC 结构 sys_custom_*_t=I(u32) 修正"
+    },
+    {
+      "name": "getDeviceCursorFunctionDpiMessage",
+      "header": [
+        1,
+        7,
+        9,
+        1
+      ],
+      "header_hex": "01 07 09 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "raw": true
+      }
+    },
+    {
+      "name": "setDeviceCursorFunctionDpiMessage:",
+      "header": [
+        1,
+        7,
+        9,
+        4
+      ],
+      "header_hex": "01 07 09 04",
+      "direction": "set",
+      "payload_at": "—",
+      "args": []
+    },
+    {
+      "name": "getDeviceCountdownTimeMessage",
+      "header": [
+        1,
+        7,
+        50,
+        1
+      ],
+      "header_hex": "01 07 32 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "fields": [
+          {
+            "name": "value",
+            "off": 0,
+            "width": 4,
+            "enc": "u32le"
+          }
+        ],
+        "note": "u32，据结构目录修正(此前误按u16)"
+      }
+    },
+    {
+      "name": "setDeviceCountdownTimeMessage:",
+      "header": [
+        1,
+        7,
+        50,
+        4
+      ],
+      "header_hex": "01 07 32 04",
+      "direction": "set",
+      "payload_at": "—",
+      "args": [],
+      "note": "宽度按 ObjC 结构 sys_custom_*_t=I(u32) 修正"
+    },
+    {
+      "name": "getDeviceSupportCursorFunctionMessage",
+      "header": [
+        1,
+        7,
+        48,
+        1
+      ],
+      "header_hex": "01 07 30 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "raw": true
+      }
+    },
+    {
+      "name": "getDeviceCurrentCursorFunctionMessage",
+      "header": [
+        129,
+        7,
+        26,
+        1
+      ],
+      "header_hex": "81 07 1a 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "raw": true
+      }
+    },
+    {
+      "name": "getDeviceCursorFunctionStatusMessage",
+      "header": [
+        1,
+        7,
+        49,
+        1
+      ],
+      "header_hex": "01 07 31 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "raw": true
+      }
+    },
+    {
+      "name": "getDeviceSpotlightStatusMessage",
+      "header": [
+        1,
+        7,
+        27,
+        1
+      ],
+      "header_hex": "01 07 1b 01",
+      "direction": "get",
+      "payload_at": "—",
+      "same_header_count": 6,
+      "args": [],
+      "response": {
+        "fields": [
+          {
+            "name": "field1",
+            "off": 1,
+            "width": 1,
+            "enc": "u8 le"
+          }
+        ],
+        "from_set": "setDeviceSpotlightStatusMessage:"
+      }
+    },
+    {
+      "name": "setDeviceSpotlightStatusMessage:",
+      "header": [
+        1,
+        7,
+        27,
+        0
+      ],
+      "header_hex": "01 07 1b 00",
+      "direction": "set",
+      "payload_at": "0xd",
+      "same_header_count": 6,
+      "args": [
+        {
+          "arg": 1,
+          "wire": 5,
+          "width": 1
+        }
+      ]
+    },
+    {
+      "name": "getDeviceMagnifierGlassStatusMessage",
+      "header": [
+        1,
+        7,
+        27,
+        1
+      ],
+      "header_hex": "01 07 1b 01",
+      "direction": "get",
+      "payload_at": "0xc",
+      "same_header_count": 6,
+      "args": [],
+      "response": {
+        "fields": [
+          {
+            "name": "field1",
+            "off": 1,
+            "width": 1,
+            "enc": "u8 le"
+          }
+        ],
+        "from_set": "setDeviceSpotlightStatusMessage:"
+      }
+    },
+    {
+      "name": "setDeviceMagnifierGlassStatusMessage:",
+      "header": [
+        1,
+        7,
+        27,
+        0
+      ],
+      "header_hex": "01 07 1b 00",
+      "direction": "set",
+      "payload_at": "0xc, 0xd",
+      "same_header_count": 6,
+      "args": [
+        {
+          "arg": 1,
+          "wire": 5,
+          "width": 1
+        }
+      ]
+    },
+    {
+      "name": "getDeviceDigitalLaserStatusMessage",
+      "header": [
+        1,
+        7,
+        27,
+        1
+      ],
+      "header_hex": "01 07 1b 01",
+      "direction": "get",
+      "payload_at": "0xc",
+      "same_header_count": 6,
+      "args": [],
+      "response": {
+        "fields": [
+          {
+            "name": "field1",
+            "off": 1,
+            "width": 1,
+            "enc": "u8 le"
+          }
+        ],
+        "from_set": "setDeviceSpotlightStatusMessage:"
+      }
+    },
+    {
+      "name": "setDeviceDigitalLaserStatusMessage:",
+      "header": [
+        1,
+        7,
+        27,
+        0
+      ],
+      "header_hex": "01 07 1b 00",
+      "direction": "set",
+      "payload_at": "0xc, 0xd",
+      "same_header_count": 6,
+      "args": [
+        {
+          "arg": 1,
+          "wire": 5,
+          "width": 1
+        }
+      ]
+    },
+    {
+      "name": "getDevicePhysicalLaserStatusMessage",
+      "header": [
+        1,
+        7,
+        27,
+        1
+      ],
+      "header_hex": "01 07 1b 01",
+      "direction": "get",
+      "payload_at": "0xc",
+      "same_header_count": 6,
+      "args": [],
+      "response": {
+        "fields": [
+          {
+            "name": "field1",
+            "off": 1,
+            "width": 1,
+            "enc": "u8 le"
+          }
+        ],
+        "from_set": "setDeviceSpotlightStatusMessage:"
+      }
+    },
+    {
+      "name": "setDevicePhysicalLaserStatusMessage:",
+      "header": [
+        1,
+        7,
+        27,
+        0
+      ],
+      "header_hex": "01 07 1b 00",
+      "direction": "set",
+      "payload_at": "0xc, 0xd",
+      "same_header_count": 6,
+      "args": [
+        {
+          "arg": 1,
+          "wire": 5,
+          "width": 1
+        }
+      ]
+    },
+    {
+      "name": "getDeviceAnnotationStatusMessage",
+      "header": [
+        1,
+        7,
+        27,
+        1
+      ],
+      "header_hex": "01 07 1b 01",
+      "direction": "get",
+      "payload_at": "0xc",
+      "same_header_count": 6,
+      "args": [],
+      "response": {
+        "fields": [
+          {
+            "name": "field1",
+            "off": 1,
+            "width": 1,
+            "enc": "u8 le"
+          }
+        ],
+        "from_set": "setDeviceSpotlightStatusMessage:"
+      }
+    },
+    {
+      "name": "setDeviceAnnotationStatusMessage:",
+      "header": [
+        1,
+        7,
+        27,
+        0
+      ],
+      "header_hex": "01 07 1b 00",
+      "direction": "set",
+      "payload_at": "0xc, 0xd",
+      "same_header_count": 6,
+      "args": [
+        {
+          "arg": 1,
+          "wire": 5,
+          "width": 1
+        }
+      ]
+    },
+    {
+      "name": "getDeviceAirMouseStatusMessage",
+      "header": [
+        1,
+        7,
+        27,
+        1
+      ],
+      "header_hex": "01 07 1b 01",
+      "direction": "get",
+      "payload_at": "0xc",
+      "same_header_count": 6,
+      "args": [],
+      "response": {
+        "fields": [
+          {
+            "name": "field1",
+            "off": 1,
+            "width": 1,
+            "enc": "u8 le"
+          }
+        ],
+        "from_set": "setDeviceSpotlightStatusMessage:"
+      }
+    },
+    {
+      "name": "setDeviceAirMouseStatusMessage:",
+      "header": [
+        1,
+        7,
+        27,
+        0
+      ],
+      "header_hex": "01 07 1b 00",
+      "direction": "set",
+      "payload_at": "0xc, 0xd",
+      "same_header_count": 6,
+      "args": [
+        {
+          "arg": 1,
+          "wire": 5,
+          "width": 1
+        }
+      ]
+    },
+    {
+      "name": "getDeviceKeyPageUpLongPressFunctionMessage",
+      "header": [
+        1,
+        7,
+        51,
+        1
+      ],
+      "header_hex": "01 07 33 01",
+      "direction": "get",
+      "payload_at": "0xc",
+      "same_header_count": 3,
+      "args": [],
+      "response": {
+        "fields": [
+          {
+            "name": "field1",
+            "off": 1,
+            "width": 1,
+            "enc": "u8 le"
+          },
+          {
+            "name": "field2",
+            "off": 2,
+            "width": 1,
+            "enc": "u8 le"
+          }
+        ],
+        "from_set": "setDeviceKeyPageUpLongPressFunctionMessage:index:"
+      }
+    },
+    {
+      "name": "setDeviceKeyPageUpLongPressFunctionMessage:index:",
+      "header": [
+        1,
+        7,
+        51,
+        4
+      ],
+      "header_hex": "01 07 33 04",
+      "direction": "set",
+      "payload_at": "0xc, 0xd, 0xe",
+      "same_header_count": 2,
+      "args": [
+        {
+          "arg": 1,
+          "wire": 5,
+          "width": 1
+        },
+        {
+          "arg": 2,
+          "wire": 6,
+          "width": 1
+        }
+      ]
+    },
+    {
+      "name": "getDeviceKeyPageDownLongPressFunctionMessage",
+      "header": [
+        1,
+        7,
+        51,
+        1
+      ],
+      "header_hex": "01 07 33 01",
+      "direction": "get",
+      "payload_at": "—",
+      "same_header_count": 3,
+      "args": [],
+      "response": {
+        "fields": [
+          {
+            "name": "field1",
+            "off": 1,
+            "width": 1,
+            "enc": "u8 le"
+          },
+          {
+            "name": "field2",
+            "off": 2,
+            "width": 1,
+            "enc": "u8 le"
+          }
+        ],
+        "from_set": "setDeviceKeyPageUpLongPressFunctionMessage:index:"
+      }
+    },
+    {
+      "name": "setDeviceKeyPageDownLongPressFunctionMessage:index:",
+      "header": [
+        1,
+        7,
+        51,
+        4
+      ],
+      "header_hex": "01 07 33 04",
+      "direction": "set",
+      "payload_at": "0xd, 0xe",
+      "same_header_count": 2,
+      "args": [
+        {
+          "arg": 1,
+          "wire": 5,
+          "width": 1
+        },
+        {
+          "arg": 2,
+          "wire": 6,
+          "width": 1
+        }
+      ]
+    },
+    {
+      "name": "getDeviceMotorVibrationParamsMessage",
+      "header": [
+        1,
+        7,
+        51,
+        1
+      ],
+      "header_hex": "01 07 33 01",
+      "direction": "get",
+      "payload_at": "—",
+      "same_header_count": 3,
+      "args": [],
+      "response": {
+        "fields": [
+          {
+            "name": "field1",
+            "off": 1,
+            "width": 1,
+            "enc": "u8 le"
+          },
+          {
+            "name": "field2",
+            "off": 2,
+            "width": 1,
+            "enc": "u8 le"
+          }
+        ],
+        "from_set": "setDeviceKeyPageUpLongPressFunctionMessage:index:"
+      }
+    },
+    {
+      "name": "setDeviceMotorVibrationParamsMessage:intensity:",
+      "header": [
+        1,
+        7,
+        51,
+        2
+      ],
+      "header_hex": "01 07 33 02",
+      "direction": "set",
+      "payload_at": "0x10",
+      "args": [
+        {
+          "arg": 2,
+          "wire": 8,
+          "width": 1
+        }
+      ]
+    },
+    {
+      "name": "getDeviceButtonShortcutFunctionMessage:",
+      "header": [
+        1,
+        6,
+        80,
+        1
+      ],
+      "header_hex": "01 06 50 01",
+      "direction": "get",
+      "payload_at": "0xc",
+      "args": [
+        {
+          "arg": 1,
+          "wire": 4,
+          "width": 1
+        }
+      ],
+      "response": {
+        "fields": [
+          {
+            "name": "index",
+            "off": 0,
+            "width": 1
+          },
+          {
+            "name": "const01",
+            "off": 1,
+            "width": 1
+          },
+          {
+            "name": "num",
+            "off": 2,
+            "width": 1
+          },
+          {
+            "name": "entries",
+            "off": 3,
+            "enc": "(pageSign,value)×num"
+          }
+        ]
+      }
+    },
+    {
+      "name": "setDeviceButtonShortcutFunctionMessage:num:pages:values:signs:",
+      "header": [
+        1,
+        6,
+        80,
+        4
+      ],
+      "header_hex": "01 06 50 04",
+      "direction": "set",
+      "payload_at": "0x4c, 0x4d, 0x4e",
+      "args": [
+        {
+          "arg": 1,
+          "wire": 68,
+          "width": 1
+        },
+        {
+          "arg": 2,
+          "wire": 70,
+          "width": 1
+        }
+      ],
+      "variable": true
+    },
+    {
+      "name": "getDeviceMotorStrengthMessage",
+      "header": [
+        1,
+        6,
+        64,
+        1
+      ],
+      "header_hex": "01 06 40 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "fields": [
+          {
+            "name": "field1",
+            "off": 0,
+            "width": 2,
+            "enc": "u16 le"
+          }
+        ],
+        "from_set": "setDeviceMotorStrengthMessage:"
+      }
+    },
+    {
+      "name": "setDeviceMotorStrengthMessage:",
+      "header": [
+        1,
+        6,
+        64,
+        4
+      ],
+      "header_hex": "01 06 40 04",
+      "direction": "set",
+      "payload_at": "—",
+      "args": [
+        {
+          "arg": 1,
+          "wire": 4,
+          "width": 2
+        }
+      ]
+    },
+    {
+      "name": "getDeviceAudioButtonSystemMode",
+      "header": [
+        1,
+        6,
+        81,
+        1
+      ],
+      "header_hex": "01 06 51 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "fields": [
+          {
+            "name": "field1",
+            "off": 0,
+            "width": 1,
+            "enc": "u8 le"
+          }
+        ],
+        "from_set": "setDeviceAudioButtonSystemMode:"
+      }
+    },
+    {
+      "name": "setDeviceAudioButtonSystemMode:",
+      "header": [
+        1,
+        6,
+        81,
+        4
+      ],
+      "header_hex": "01 06 51 04",
+      "direction": "set",
+      "payload_at": "0xc",
+      "args": [
+        {
+          "arg": 1,
+          "wire": 4,
+          "width": 1
+        }
+      ]
+    },
+    {
+      "name": "getDeviceMicNRLevel",
+      "header": [
+        1,
+        1,
+        144,
+        1
+      ],
+      "header_hex": "01 01 90 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "fields": [
+          {
+            "name": "level",
+            "off": 0,
+            "width": 1,
+            "enc": "u8"
+          },
+          {
+            "name": "low",
+            "off": 1,
+            "width": 2,
+            "enc": "u16le"
+          },
+          {
+            "name": "high",
+            "off": 3,
+            "width": 2,
+            "enc": "u16le"
+          }
+        ]
+      }
+    },
+    {
+      "name": "setDeviceMicNRLevel:lowParam:highParam:",
+      "header": [
+        1,
+        1,
+        144,
+        4
+      ],
+      "header_hex": "01 01 90 04",
+      "direction": "set",
+      "payload_at": "0xc",
+      "args": [
+        {
+          "arg": 1,
+          "wire": 4,
+          "width": 1
+        }
+      ]
+    },
+    {
+      "name": "getDeviceHooksMode",
+      "header": [
+        1,
+        11,
+        137,
+        1
+      ],
+      "header_hex": "01 0b 89 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "fields": [
+          {
+            "name": "field1",
+            "off": 0,
+            "width": 1,
+            "enc": "u8 le"
+          }
+        ],
+        "from_set": "setDeviceHooksMode:"
+      }
+    },
+    {
+      "name": "setDeviceHooksMode:",
+      "header": [
+        1,
+        11,
+        137,
+        4
+      ],
+      "header_hex": "01 0b 89 04",
+      "direction": "set",
+      "payload_at": "0xc",
+      "args": [
+        {
+          "arg": 1,
+          "wire": 4,
+          "width": 1
+        }
+      ]
+    },
+    {
+      "name": "getExpertMouseSWStatus",
+      "header": [
+        1,
+        1,
+        16,
+        1
+      ],
+      "header_hex": "01 01 10 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "raw": true
+      }
+    },
+    {
+      "name": "setExpertMouseSWStatus:",
+      "header": [
+        3,
+        0,
+        0,
+        0
+      ],
+      "header_hex": "03 00 00 00",
+      "direction": "set",
+      "payload_at": "0xc",
+      "args": []
+    },
+    {
+      "name": "getDeviceWheelEnableStatus",
+      "header": [
+        1,
+        1,
+        52,
+        1
+      ],
+      "header_hex": "01 01 34 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "raw": true
+      }
+    },
+    {
+      "name": "getDeviceWheelLevel",
+      "header": [
+        1,
+        6,
+        66,
+        1
+      ],
+      "header_hex": "01 06 42 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "fields": [
+          {
+            "name": "field1",
+            "off": 0,
+            "width": 1,
+            "enc": "u8 le"
+          }
+        ],
+        "from_set": "setDeviceWheelLevel:"
+      }
+    },
+    {
+      "name": "setDeviceWheelLevel:",
+      "header": [
+        1,
+        6,
+        66,
+        0
+      ],
+      "header_hex": "01 06 42 00",
+      "direction": "set",
+      "payload_at": "0xc",
+      "args": [
+        {
+          "arg": 1,
+          "wire": 4,
+          "width": 1
+        }
+      ]
+    },
+    {
+      "name": "getDeviceIndicatorLightAllParams",
+      "header": [
+        1,
+        11,
+        136,
+        1
+      ],
+      "header_hex": "01 0b 88 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "fields": [
+          {
+            "name": "field1",
+            "off": 2,
+            "width": 1,
+            "enc": "u8 le"
+          }
+        ],
+        "from_set": "setDeviceIndicatorLightCurrentMode:"
+      }
+    },
+    {
+      "name": "setDeviceIndicatorLightCurrentMode:",
+      "header": [
+        1,
+        11,
+        136,
+        4
+      ],
+      "header_hex": "01 0b 88 04",
+      "direction": "set",
+      "payload_at": "0xe",
+      "same_header_count": 7,
+      "args": [
+        {
+          "arg": 1,
+          "wire": 6,
+          "width": 1
+        }
+      ]
+    },
+    {
+      "name": "setDeviceIndicatorLightAllOnModeBrightnessLevel:",
+      "header": [
+        1,
+        11,
+        136,
+        4
+      ],
+      "header_hex": "01 0b 88 04",
+      "direction": "set",
+      "payload_at": "0xc, 0xf",
+      "same_header_count": 7,
+      "args": [
+        {
+          "arg": 1,
+          "wire": 7,
+          "width": 1
+        }
+      ]
+    },
+    {
+      "name": "setDeviceIndicatorLightWorkModeType:type:",
+      "header": [
+        1,
+        11,
+        136,
+        4
+      ],
+      "header_hex": "01 0b 88 04",
+      "direction": "set",
+      "payload_at": "0x4c, 0x4d",
+      "same_header_count": 7,
+      "args": [
+        {
+          "arg": 1,
+          "wire": 69,
+          "width": 1
+        }
+      ],
+      "variable": true
+    },
+    {
+      "name": "setDeviceIndicatorLightWorkModeTime:workTime:",
+      "header": [
+        1,
+        11,
+        136,
+        4
+      ],
+      "header_hex": "01 0b 88 04",
+      "direction": "set",
+      "payload_at": "0x4c, 0x4d",
+      "same_header_count": 7,
+      "args": [
+        {
+          "arg": 1,
+          "wire": 69,
+          "width": 1
+        }
+      ],
+      "variable": true
+    },
+    {
+      "name": "setDeviceIndicatorLightWorkModeBreatheLevel:level:",
+      "header": [
+        1,
+        11,
+        136,
+        4
+      ],
+      "header_hex": "01 0b 88 04",
+      "direction": "set",
+      "payload_at": "0x4c, 0x4d",
+      "same_header_count": 7,
+      "args": [
+        {
+          "arg": 1,
+          "wire": 69,
+          "width": 1
+        }
+      ],
+      "variable": true
+    },
+    {
+      "name": "setDeviceIndicatorLightWorkModeBreatheBrightnessLevel:level:",
+      "header": [
+        1,
+        11,
+        136,
+        4
+      ],
+      "header_hex": "01 0b 88 04",
+      "direction": "set",
+      "payload_at": "0x4c, 0x4d",
+      "same_header_count": 7,
+      "args": [
+        {
+          "arg": 1,
+          "wire": 69,
+          "width": 1
+        }
+      ],
+      "variable": true
+    },
+    {
+      "name": "setDeviceIndicatorLightWorkModeAlwaysOnBrightnessLevel:level:",
+      "header": [
+        1,
+        11,
+        136,
+        4
+      ],
+      "header_hex": "01 0b 88 04",
+      "direction": "set",
+      "payload_at": "0x4c, 0x4d",
+      "same_header_count": 7,
+      "args": [
+        {
+          "arg": 1,
+          "wire": 69,
+          "width": 1
+        }
+      ],
+      "variable": true
+    },
+    {
+      "name": "setDeviceDialNeoIndicatorLightBreatheEnable:",
+      "header": [
+        1,
+        1,
+        67,
+        4
+      ],
+      "header_hex": "01 01 43 04",
+      "direction": "set",
+      "payload_at": "0xc",
+      "args": [
+        {
+          "arg": 1,
+          "wire": 4,
+          "width": 1
+        }
+      ]
+    },
+    {
+      "name": "getDeviceDialNeoIndicatorLightBreatheEnable",
+      "header": [
+        1,
+        1,
+        67,
+        1
+      ],
+      "header_hex": "01 01 43 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "fields": [
+          {
+            "name": "field1",
+            "off": 0,
+            "width": 1,
+            "enc": "u8 le"
+          }
+        ],
+        "from_set": "setDeviceDialNeoIndicatorLightBreatheEnable:"
+      }
+    },
+    {
+      "name": "getDeviceLcdGifParamMessage",
+      "header": [
+        1,
+        6,
+        101,
+        1
+      ],
+      "header_hex": "01 06 65 01",
+      "direction": "get",
+      "payload_at": "—",
+      "args": [],
+      "response": {
+        "fields": [
+          {
+            "name": "field1",
+            "off": 0,
+            "width": 1,
+            "enc": "u8 le"
+          },
+          {
+            "name": "field2",
+            "off": 1,
+            "width": 1,
+            "enc": "u8 le"
+          }
+        ],
+        "from_set": "setDeviceLcdGifParamMessage:imageCount:interval:"
+      }
+    },
+    {
+      "name": "setDeviceLcdGifParamMessage:imageCount:interval:",
+      "header": [
+        1,
+        6,
+        101,
+        0
+      ],
+      "header_hex": "01 06 65 00",
+      "direction": "set",
+      "payload_at": "0xc, 0xd",
+      "args": [
+        {
+          "arg": 1,
+          "wire": 4,
+          "width": 1
+        },
+        {
+          "arg": 2,
+          "wire": 5,
+          "width": 1
+        }
+      ]
+    },
+    {
+      "name": "deviceUploadImageConnectMessage:imageIndex:imageCount:",
+      "header": [
+        21,
+        1,
+        0,
+        0
+      ],
+      "header_hex": "15 01 00 00",
+      "direction": "set",
+      "payload_at": "0x1a, 0x1b",
+      "args": [
+        {
+          "arg": 2,
+          "wire": 18,
+          "width": 1
+        },
+        {
+          "arg": 3,
+          "wire": 19,
+          "width": 1
+        }
+      ]
+    },
+    {
+      "name": "deviceUploadImageDataMessage:packageLength:data:",
+      "header": [
+        5,
+        0,
+        0,
+        0
+      ],
+      "header_hex": "05 00 00 00",
+      "direction": "set",
+      "payload_at": "0x4c",
+      "args": [
+        {
+          "arg": 1,
+          "wire": 66,
+          "width": 2
+        },
+        {
+          "arg": 2,
+          "wire": 68,
+          "width": 1
+        }
+      ],
+      "variable": true
+    },
+    {
+      "name": "deviceUploadImageReceivePackageNumMessage:",
+      "header": [
+        21,
+        3,
+        0,
+        0
+      ],
+      "header_hex": "15 03 00 00",
+      "direction": "set",
+      "payload_at": "—",
+      "args": []
+    },
+    {
+      "name": "deviceUploadImageEnableProgramMessage:packageSize:enable:",
+      "header": [
+        21,
+        4,
+        0,
+        0
+      ],
+      "header_hex": "15 04 00 00",
+      "direction": "set",
+      "payload_at": "0xc, 0xd",
+      "args": [
+        {
+          "arg": 1,
+          "wire": 2,
+          "width": 2
+        },
+        {
+          "arg": 2,
+          "wire": 4,
+          "width": 1
+        },
+        {
+          "arg": 3,
+          "wire": 5,
+          "width": 1
+        }
+      ]
+    },
+    {
+      "name": "deviceUploadImageCheckAllSumMessage",
+      "header": [
+        21,
+        6,
+        0,
+        0
+      ],
+      "header_hex": "15 06 00 00",
+      "direction": "set",
+      "payload_at": "—",
+      "args": []
+    },
+    {
+      "name": "deviceUploadImageAllPageCompleteResultMessage:",
+      "header": [
+        21,
+        7,
+        0,
+        0
+      ],
+      "header_hex": "15 07 00 00",
+      "direction": "set",
+      "payload_at": "0xa",
+      "args": [
+        {
+          "arg": 1,
+          "wire": 2,
+          "width": 1
+        }
+      ]
+    },
+    {
+      "name": "dongleUpgradeConnectMessage:customCode:customCodeLength:",
+      "header": [
+        30,
+        1,
+        0,
+        0
+      ],
+      "header_hex": "1e 01 00 00",
+      "direction": "set",
+      "payload_at": "—",
+      "args": [
+        {
+          "arg": 1,
+          "wire": 72,
+          "width": 4
+        }
+      ],
+      "variable": true
+    },
+    {
+      "name": "dongleUpgradeDataMessage:packageLength:data:",
+      "header": [
+        5,
+        0,
+        0,
+        0
+      ],
+      "header_hex": "05 00 00 00",
+      "direction": "set",
+      "payload_at": "0x4c",
+      "args": [
+        {
+          "arg": 1,
+          "wire": 66,
+          "width": 2
+        },
+        {
+          "arg": 2,
+          "wire": 68,
+          "width": 1
+        }
+      ],
+      "variable": true
+    },
+    {
+      "name": "dongleUpgradeReceivePackageNumMessage:",
+      "header": [
+        30,
+        3,
+        0,
+        0
+      ],
+      "header_hex": "1e 03 00 00",
+      "direction": "set",
+      "payload_at": "—",
+      "args": []
+    },
+    {
+      "name": "dongleUpgradeEnableProgramMessage:packageSize:enable:",
+      "header": [
+        30,
+        4,
+        0,
+        0
+      ],
+      "header_hex": "1e 04 00 00",
+      "direction": "set",
+      "payload_at": "0xc, 0xd",
+      "args": [
+        {
+          "arg": 1,
+          "wire": 2,
+          "width": 2
+        },
+        {
+          "arg": 2,
+          "wire": 4,
+          "width": 1
+        },
+        {
+          "arg": 3,
+          "wire": 5,
+          "width": 1
+        }
+      ]
+    },
+    {
+      "name": "dongleUpgradeCheckAllSumMessage",
+      "header": [
+        30,
+        6,
+        0,
+        0
+      ],
+      "header_hex": "1e 06 00 00",
+      "direction": "set",
+      "payload_at": "—",
+      "args": []
+    },
+    {
+      "name": "dongleUpgradeAllPageCompleteResultMessage:",
+      "header": [
+        30,
+        7,
+        0,
+        0
+      ],
+      "header_hex": "1e 07 00 00",
+      "direction": "set",
+      "payload_at": "0xa",
+      "args": [
+        {
+          "arg": 1,
+          "wire": 2,
+          "width": 1
+        }
+      ]
+    },
+    {
+      "name": "setDongleRebootMessage:",
+      "header": [
+        6,
+        1,
+        38,
+        0
+      ],
+      "header_hex": "06 01 26 00",
+      "direction": "set",
+      "payload_at": "—",
+      "args": []
+    },
+    {
+      "name": "deviceUpgradeConnectMessage:customCode:customCodeLength:",
+      "header": [
+        31,
+        1,
+        0,
+        0
+      ],
+      "header_hex": "1f 01 00 00",
+      "direction": "set",
+      "payload_at": "—",
+      "args": [
+        {
+          "arg": 1,
+          "wire": 72,
+          "width": 4
+        }
+      ],
+      "variable": true
+    },
+    {
+      "name": "deviceUpgradeDataMessage:packageLength:data:",
+      "header": [
+        5,
+        0,
+        0,
+        0
+      ],
+      "header_hex": "05 00 00 00",
+      "direction": "set",
+      "payload_at": "0x4c",
+      "args": [
+        {
+          "arg": 1,
+          "wire": 66,
+          "width": 2
+        },
+        {
+          "arg": 2,
+          "wire": 68,
+          "width": 1
+        }
+      ],
+      "variable": true
+    },
+    {
+      "name": "deviceUpgradeReceivePackageNumMessage:",
+      "header": [
+        31,
+        3,
+        0,
+        0
+      ],
+      "header_hex": "1f 03 00 00",
+      "direction": "set",
+      "payload_at": "—",
+      "args": []
+    },
+    {
+      "name": "deviceUpgradeEnableProgramMessage:packageSize:enable:",
+      "header": [
+        31,
+        4,
+        0,
+        0
+      ],
+      "header_hex": "1f 04 00 00",
+      "direction": "set",
+      "payload_at": "0xc, 0xd",
+      "args": [
+        {
+          "arg": 1,
+          "wire": 2,
+          "width": 2
+        },
+        {
+          "arg": 2,
+          "wire": 4,
+          "width": 1
+        },
+        {
+          "arg": 3,
+          "wire": 5,
+          "width": 1
+        }
+      ]
+    },
+    {
+      "name": "deviceUpgradeCheckAllSumMessage",
+      "header": [
+        31,
+        6,
+        0,
+        0
+      ],
+      "header_hex": "1f 06 00 00",
+      "direction": "set",
+      "payload_at": "—",
+      "args": []
+    },
+    {
+      "name": "deviceUpgradeAllPageCompleteResultMessage:",
+      "header": [
+        31,
+        7,
+        0,
+        0
+      ],
+      "header_hex": "1f 07 00 00",
+      "direction": "set",
+      "payload_at": "0xa",
+      "args": [
+        {
+          "arg": 1,
+          "wire": 2,
+          "width": 1
+        }
+      ]
+    },
+    {
+      "name": "setDeviceRebootMessage:",
+      "header": [
+        1,
+        1,
+        12,
+        0
+      ],
+      "header_hex": "01 01 0c 00",
+      "direction": "set",
+      "payload_at": "—",
+      "args": []
+    },
+    {
+      "name": "deviceHeartbeatMessage",
+      "header": [
+        6,
+        1,
+        35,
+        0
+      ],
+      "header_hex": "06 01 23 00",
+      "direction": "set",
+      "payload_at": "0xc",
+      "args": []
+    }
+  ]
+}
