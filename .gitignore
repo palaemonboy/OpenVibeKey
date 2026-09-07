@@ -1,0 +1,57 @@
+node_modules/
+legacy/server/data/*.json
+.DS_Store
+
+# 编辑器与 IDE 本地配置
+.idea/
+.vscode/
+*.xcuserstate
+xcuserdata/
+.swiftpm/
+
+# SwiftPM 构建产物
+.build/
+
+# 打包产物
+dist/
+
+# 本地设计、计划与协议研究文档
+/docs/
+
+# 本地测试向量生成工具；已生成的测试 JSON 仍入库
+/native/gen-oracle.mjs
+
+# 签名证书、证书请求、API 私钥及钥匙串导出
+*.[pP]12
+*.[pP][fF][xX]
+*.[cC][eE][rR]
+*.[cC][rR][tT]
+*.certSigningRequest
+*.[cC][sS][rR]
+*.[pP]8
+*.[pP][eE][mM]
+*.[kK][eE][yY]
+*.keychain
+*.keychain-db
+*.mobileprovision
+*.provisionprofile
+
+# 本地密码、notarytool 配置和其他凭据（不要写入源码或文档）
+.env
+.env.*
+!.env.example
+!.env.sample
+secrets/
+.secrets/
+credentials/
+.credentials/
+private-keys/
+keychain-exports/
+*app-specific-password*
+*app-password*
+*notarytool*
+*notarization-credentials*
+id_rsa
+id_ed25519
+id_ecdsa
+id_dsa
