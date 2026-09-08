@@ -9,7 +9,7 @@
   "use strict";
 
   /* ------------------------------------------------------------------
-   * 1. 文案字典（中 / 英 两套，key 对应 HTML 里的 data-i18n）
+   * 1. 文案字典（中 / 英 两套，key 对应 HTML 里的 data-vibekey-i18n）
    * ------------------------------------------------------------------ */
   var I18N = {
     zh: {
@@ -316,27 +316,27 @@
     }
 
     // 普通文本节点
-    var nodes = document.querySelectorAll("[data-i18n]");
+    var nodes = document.querySelectorAll("[data-vibekey-i18n]");
     for (var i = 0; i < nodes.length; i++) {
-      var key = nodes[i].getAttribute("data-i18n");
+      var key = nodes[i].getAttribute("data-vibekey-i18n");
       if (dict[key] !== undefined) {
         nodes[i].textContent = dict[key];
       }
     }
 
     // aria-label 属性
-    var ariaNodes = document.querySelectorAll("[data-i18n-aria]");
+    var ariaNodes = document.querySelectorAll("[data-vibekey-i18n-aria]");
     for (var j = 0; j < ariaNodes.length; j++) {
-      var ariaKey = ariaNodes[j].getAttribute("data-i18n-aria");
+      var ariaKey = ariaNodes[j].getAttribute("data-vibekey-i18n-aria");
       if (dict[ariaKey] !== undefined) {
         ariaNodes[j].setAttribute("aria-label", dict[ariaKey]);
       }
     }
 
     // 图片 alt 文案（比如设备照片）
-    var altNodes = document.querySelectorAll("[data-i18n-alt]");
+    var altNodes = document.querySelectorAll("[data-vibekey-i18n-alt]");
     for (var m = 0; m < altNodes.length; m++) {
-      var altKey = altNodes[m].getAttribute("data-i18n-alt");
+      var altKey = altNodes[m].getAttribute("data-vibekey-i18n-alt");
       if (dict[altKey] !== undefined) {
         altNodes[m].setAttribute("alt", dict[altKey]);
       }
@@ -392,9 +392,9 @@
       iconCopy.toggleAttribute("hidden", true);
       iconCheck.toggleAttribute("hidden", false);
       feedback.classList.add("is-shown");
-      // 按钮上的文字标签也跟着切成"已复制"，与语言切换一样通过重写 data-i18n
+      // 按钮上的文字标签也跟着切成"已复制"，与语言切换一样通过重写 data-vibekey-i18n
       // 保证切换语言时能正确重新翻译（参考 renderShortcutRow 里"未设置"的写法）。
-      label.setAttribute("data-i18n", "hero.brew.copied");
+      label.setAttribute("data-vibekey-i18n", "hero.brew.copied");
       label.textContent = dict["hero.brew.copied"];
 
       clearTimeout(feedbackTimer);
@@ -404,7 +404,7 @@
         iconCopy.toggleAttribute("hidden", false);
         iconCheck.toggleAttribute("hidden", true);
         feedback.classList.remove("is-shown");
-        label.setAttribute("data-i18n", "hero.brew.copyLabel");
+        label.setAttribute("data-vibekey-i18n", "hero.brew.copyLabel");
         label.textContent = currentDict["hero.brew.copyLabel"];
       }, 1600);
     }
@@ -532,7 +532,7 @@
     labels.forEach(function (label) {
       if (dict[panelState.profileKey] !== undefined) {
         label.textContent = dict[panelState.profileKey];
-        label.setAttribute("data-i18n", panelState.profileKey);
+        label.setAttribute("data-vibekey-i18n", panelState.profileKey);
       }
     });
   }
@@ -553,7 +553,7 @@
 
     options.forEach(function (opt) {
       opt.addEventListener("click", function () {
-        panelState.profileKey = opt.getAttribute("data-i18n");
+        panelState.profileKey = opt.getAttribute("data-vibekey-i18n");
         updateProfileLabels();
         closeMenu();
       });

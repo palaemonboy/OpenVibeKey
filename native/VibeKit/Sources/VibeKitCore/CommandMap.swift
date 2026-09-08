@@ -26,8 +26,24 @@ public enum VibeKitCommandError: Error, Equatable {
 public enum VibeKitCommands {
     private struct Table: Codable { let commands: [CommandSpec] }
 
+    /// SwiftPM's generated `Bundle.module` looks for a target bundle beside the
+    /// `.app` itself. A normal signed macOS app must keep it in
+    /// `Contents/Resources`, so search both standard packaged and SwiftPM-run
+    /// layouts without ever initializing that generated accessor.
+    private static func resourceURL(named name: String, extension ext: String) -> URL? {
+        let bundleName = "VibeKit_VibeKitCore.bundle"
+        let roots = [Bundle.main.resourceURL, Bundle.main.bundleURL]
+        for root in roots.compactMap({ $0 }) {
+            if let bundle = Bundle(path: root.appendingPathComponent(bundleName).path),
+               let url = bundle.url(forResource: name, withExtension: ext) {
+                return url
+            }
+        }
+        return nil
+    }
+
     public static let specs: [String: CommandSpec] = {
-        guard let url = Bundle.module.url(forResource: "protocol-commands", withExtension: "json"),
+        guard let url = resourceURL(named: "protocol-commands", extension: "json"),
               let data = try? Data(contentsOf: url),
               let table = try? JSONDecoder().decode(Table.self, from: data) else {
             return [:]
