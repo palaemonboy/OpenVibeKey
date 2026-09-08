@@ -170,7 +170,8 @@ extension View {
 // 设备图几何：热区使用原始 PNG 的像素坐标，绘制时统一映射到图片实际尺寸。
 enum DeviceGeom {
     static let sourceSize = CGSize(width: 328, height: 968)
-    static let imgW: CGFloat = 172
+    // 328 → 164 是精确的 2:1 缩放，且 968 → 484 恰好为整数点。
+    static let imgW: CGFloat = 164
     static let imgH: CGFloat = imgW * sourceSize.height / sourceSize.width
     // 圆形部件正面边界，不包含向下投射的阴影。
     static let spots: [(id: String, bounds: CGRect)] = [
@@ -179,13 +180,13 @@ enum DeviceGeom {
         ("btn2", CGRect(x: 108, y: 601, width: 114, height: 114)),
         ("btn3", CGRect(x: 108, y: 761, width: 114, height: 114)),
     ]
-    static func rect(_ id: String, in imgFrame: CGRect, adjust: CGSize = .zero) -> CGRect? {
+    static func rect(_ id: String, in imgFrame: CGRect) -> CGRect? {
         guard let s = spots.first(where: { $0.id == id }) else { return nil }
         let scaleX = imgFrame.width / sourceSize.width
         let scaleY = imgFrame.height / sourceSize.height
-        // 兼容旧手动偏移：其单位是默认显示尺寸下的点，也随图片一起缩放。
-        return CGRect(x: imgFrame.minX + s.bounds.minX * scaleX + adjust.width * imgFrame.width / imgW,
-                      y: imgFrame.minY + s.bounds.minY * scaleY + adjust.height * imgFrame.height / imgH,
+        // 圆环和连线只使用图片坐标，不再应用历史 partAdjust 手动偏移。
+        return CGRect(x: imgFrame.minX + s.bounds.minX * scaleX,
+                      y: imgFrame.minY + s.bounds.minY * scaleY,
                       width: s.bounds.width * scaleX, height: s.bounds.height * scaleY)
     }
 }
@@ -379,13 +380,18 @@ struct ConnectorOverlay: View {
 
 struct DeviceImageView: View {
     @ObservedObject private var language = AppLanguage.shared
-    var adjust: [String: CGSize]
     private static let img: NSImage? = {
         let bundleName = "VibeKit_VibeKitApp.bundle"
-        let roots = [Bundle.main.resourceURL, Bundle.main.bundleURL]
+        // SwiftPM 生成的资源目录不一定有 Info.plist，不能把它交给 Bundle(path:)
+        // 解析；发布到另一台 Mac 后该初始化会返回 nil，即使 PNG 实际已经在包中。
+        // 直接从资源 URL 读取，同时覆盖 swift run 与 .app 两种目录结构。
+        let roots = [
+            Bundle.main.resourceURL,
+            Bundle.main.bundleURL.appendingPathComponent("Contents/Resources")
+        ]
         for root in roots.compactMap({ $0 }) {
-            if let bundle = Bundle(path: root.appendingPathComponent(bundleName).path),
-               let url = bundle.url(forResource: "device", withExtension: "png") {
+            let url = root.appendingPathComponent(bundleName).appendingPathComponent("device.png")
+            if FileManager.default.isReadableFile(atPath: url.path) {
                 return NSImage(contentsOf: url)
             }
         }
@@ -394,28 +400,28 @@ struct DeviceImageView: View {
 
     var body: some View {
         let imgW = DeviceGeom.imgW, imgH = DeviceGeom.imgH
-        ZStack(alignment: .topLeading) {
-            if let im = Self.img {
-                Image(nsImage: im).resizable().frame(width: imgW, height: imgH)
-                    .shadow(color: .black.opacity(0.22), radius: 16, x: 0, y: 10)
-                    .reportFrame("devimg")
-            } else {
-                Rectangle().fill(Color.primary.opacity(0.06))
-                    .frame(width: imgW, height: imgH)
-                    .overlay(Text(L("设备图缺失")).font(.caption).foregroundStyle(.secondary))
-                    .reportFrame("devimg")
-            }
-            ForEach(DeviceGeom.spots, id: \.id) { hs in
-                if let bounds = DeviceGeom.rect(hs.id, in: CGRect(x: 0, y: 0, width: imgW, height: imgH),
-                                                adjust: adjust[hs.id] ?? .zero) {
-                    Circle().strokeBorder(Color.primary.opacity(0.3), lineWidth: 1)
-                        .frame(width: bounds.width, height: bounds.height)
-                        .offset(x: bounds.minX, y: bounds.minY)
-                        .allowsHitTesting(false)
+        if let im = Self.img {
+            // 在同一个 Canvas 内绘制照片和圆环，使它们共享完全相同的坐标变换及像素取整；
+            // 这样窗口跨不同缩放倍率的 Mac 时，圆环不会相对照片漂移。
+            Canvas { context, size in
+                let imageRect = CGRect(origin: .zero, size: size)
+                context.draw(context.resolve(Image(nsImage: im)), in: imageRect)
+                for spot in DeviceGeom.spots {
+                    guard let bounds = DeviceGeom.rect(spot.id, in: imageRect) else { continue }
+                    context.stroke(Path(ellipseIn: bounds.insetBy(dx: 0.5, dy: 0.5)),
+                                   with: .color(Color.primary.opacity(0.3)), lineWidth: 1)
                 }
             }
+            .frame(width: imgW, height: imgH)
+            .shadow(color: .black.opacity(0.22), radius: 16, x: 0, y: 10)
+            .reportFrame("devimg")
+            .allowsHitTesting(false)
+        } else {
+            Rectangle().fill(Color.primary.opacity(0.06))
+                .frame(width: imgW, height: imgH)
+                .overlay(Text(L("设备图缺失")).font(.caption).foregroundStyle(.secondary))
+                .reportFrame("devimg")
         }
-        .frame(width: imgW, height: imgH)
     }
 }
 

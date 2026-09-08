@@ -3,8 +3,8 @@ set -euo pipefail
 
 APP_NAME="Open VibeKey"
 BUNDLE_ID="com.openvibekey.app"
-VERSION="0.1.3"
-BUILD_NUMBER="4"
+VERSION="0.1.4"
+BUILD_NUMBER="5"
 MIN_MACOS="13.0"
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
