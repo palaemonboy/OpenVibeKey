@@ -96,7 +96,8 @@ final class VibeVM: ObservableObject {
         }
 
         // 其余标量键：仅当新域没有该键时才从旧域复制，不覆盖用户已经在新域做过的改动。
-        for k in ["activeProfile", "appearance", "dialIdx", "enforceVibeMic", "mediaFunc", "partAdjust",
+        // 历史 partAdjust 不再迁移或读取，设备图统一使用源图片坐标。
+        for k in ["activeProfile", "appearance", "dialIdx", "enforceVibeMic", "mediaFunc",
                   "appBindings.v1", "pendingSentinelClear.v1", AppLanguage.preferenceKey]
             where std.object(forKey: k) == nil {
             if let v = old.object(forKey: k) { std.set(v, forKey: k) }
@@ -290,15 +291,6 @@ final class VibeVM: ObservableObject {
     @Published var ledTypes: [Int] = [2, 0, 0, 1]  // 工作模式各灯 type：[btn1,btn2,btn3,dial] 0灭/1常亮/2呼吸
     @Published var inputVol: Double = 0     // 系统输入音量(增益) 0..1
     @Published var inputVolSupported = false // 当前输入设备是否支持软件调节增益
-    // 设备图圆圈的手动对位偏移（点，持久化）。
-    @Published var partAdjust: [String: CGSize] = {
-        var m: [String: CGSize] = [:]
-        if let d = VibeVM.migratedDefaults.dictionary(forKey: "partAdjust") as? [String: [Double]] {
-            for (k, v) in d where v.count == 2 { m[k] = CGSize(width: v[0], height: v[1]) }
-        }
-        return m
-    }()
-    @Published var calibrating = false      // 对位模式（可拖动圆圈）
     @Published var profileNames: [String] = []   // 本地存档名列表
     @Published var profileUpdated: [String: Date] = [:]  // 每个配置的最近更新时间
     @Published var activeName: String = VibeVM.migratedDefaults.string(forKey: "activeProfile") ?? "默认"  // 当前活动配置（持久化，下次启动默认加载）
@@ -644,13 +636,6 @@ final class VibeVM: ObservableObject {
             VibeKitAudio.setInputVolume(id, v)
             DispatchQueue.main.async { self.refreshInputVolume() }  // 回读实际值：不支持则滑块弹回
         }
-    }
-    // 设备图圆圈手动对位偏移的持久化。
-    func setAdjust(_ id: String, _ s: CGSize) {
-        partAdjust[id] = s
-        var d: [String: [Double]] = [:]
-        for (k, v) in partAdjust { d[k] = [Double(v.width), Double(v.height)] }
-        defaults.set(d, forKey: "partAdjust")
     }
 
     // MARK: 本地配置存档（Profile）

@@ -89,7 +89,7 @@ struct ContentView: View {
                 let right = max((btnMinX ?? left + 60) - 12, left + 24)
                 let step = (right - left) / CGFloat(laneOrder.count - 1)
                 ForEach(["dial", "btn1", "btn2", "btn3"], id: \.self) { id in
-                    if let fromBox = DeviceGeom.rect(id, in: imgF, adjust: vm.partAdjust[id] ?? .zero),
+                    if let fromBox = DeviceGeom.rect(id, in: imgF),
                        let to = frames["label:\(id)"],
                        let lane = laneOrder.firstIndex(of: id) {
                         ConnectorOverlay(from: fromBox, to: to, laneX: left + step * CGFloat(lane))
@@ -108,7 +108,7 @@ struct ContentView: View {
     // 左：设备图（去底照片直接浮在背景毛玻璃上，无边框底板）。
     func deviceColumn(showHint: Bool) -> some View {
         VStack(spacing: 10) {
-            DeviceImageView(adjust: vm.partAdjust).padding(.vertical, 6)
+            DeviceImageView().padding(.vertical, 6)
         }
         .padding(.horizontal, 8)
     }
