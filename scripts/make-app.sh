@@ -25,6 +25,8 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BUILD_DIR/VibeKitApp" "$APP/Contents/MacOS/VibeKitApp"
 
+# App resource lookup uses Contents/Resources; this is also the only location
+# accepted by macOS code signing for an application bundle.
 for b in VibeKit_VibeKitCore.bundle VibeKit_VibeKitApp.bundle; do
   if [ ! -d "$BUILD_DIR/$b" ]; then
     echo "❌ 缺少资源包 $b（SwiftPM 布局变了？）" >&2

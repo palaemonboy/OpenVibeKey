@@ -380,7 +380,17 @@ struct ConnectorOverlay: View {
 struct DeviceImageView: View {
     @ObservedObject private var language = AppLanguage.shared
     var adjust: [String: CGSize]
-    private static let img: NSImage? = Bundle.module.url(forResource: "device", withExtension: "png").flatMap { NSImage(contentsOf: $0) }
+    private static let img: NSImage? = {
+        let bundleName = "VibeKit_VibeKitApp.bundle"
+        let roots = [Bundle.main.resourceURL, Bundle.main.bundleURL]
+        for root in roots.compactMap({ $0 }) {
+            if let bundle = Bundle(path: root.appendingPathComponent(bundleName).path),
+               let url = bundle.url(forResource: "device", withExtension: "png") {
+                return NSImage(contentsOf: url)
+            }
+        }
+        return nil
+    }()
 
     var body: some View {
         let imgW = DeviceGeom.imgW, imgH = DeviceGeom.imgH
