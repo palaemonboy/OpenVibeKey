@@ -62,15 +62,13 @@ Open VibeKey stays in the menu bar, so it does not appear in the Dock.
 - Grant microphone access from the startup permission window to use the live input level meter.
 - Device controls require the AU05 to be powered on; connecting the receiver alone is not enough.
 
-## Local development
+## Double-click profile switching
 
 **Double-click dial to switch profiles** is always enabled; there is no toggle. A single press waits for the configurable interval (default 0.5 s, range 0.1–1 s, adjusted with up/down buttons and saved automatically) before executing its existing action; a double press only switches profiles and sends a notification. Other buttons and dial rotation keep their existing behavior. Accessibility access is required to replay delayed shortcuts and media keys.
 
 At startup, a unified window checks Accessibility, microphone and notification permissions. Each Settings button opens the corresponding system pane; polling never opens System Settings or requests access. The window can only close after all permissions are granted, but Quit remains available. Newly completed authorization opens the main window directly when access is already effective. Only stale in-process permission state requires one restart, followed by opening the main window. Closing the main window keeps the menu-bar listener running. Notifications acknowledge switching immediately and confirm the result after device writes finish.
 
-The app temporarily takes over the dial press while enabled, preserving the original single action in each profile. Quitting normally restores the device setting. Failed restoration is reported before quitting; after a force quit or crash, reconnect and launch the app to recover. See [manual dial tests](scripts/dial-double-click-testing.md).
-
-Run `bash scripts/setup-dev-signing.sh` once to create a local code-signing identity in your login keychain (macOS may request authorization). Then run `bash scripts/make-app-dev.sh` to create `dist/Open VibeKey Dev.app`. This build uses separate preferences and a bundle identifier, skips legacy migration, and leaves the installed app intact. It reuses the local certificate, pins its designated requirement to that certificate and bundle ID, ignores `SIGN_IDENTITY`, and requires neither an Apple ID nor notarization. Missing identities stop the build rather than falling back to ad-hoc signing. Do not recreate the certificate between builds. Migrating from the old ad-hoc build may require removing and re-adding the app in Privacy settings once.
+The app temporarily takes over the dial press while enabled, preserving the original single action in each profile. Quitting normally restores the device setting. Failed restoration is reported before quitting; after a force quit or crash, reconnect and launch the app to recover.
 
 Quit the installed app from the menu bar before opening the development build so only one app controls the device. Device settings are still shared hardware state. Quit the development build before returning to the installed app.
 

@@ -55,3 +55,11 @@ id_rsa
 id_ed25519
 id_ecdsa
 id_dsa
+
+# Local build, signing and verification helpers
+/scripts/check-localization.swift
+/scripts/dial-double-click-testing.md
+/scripts/make-app-dev.sh
+/scripts/make-app.sh
+/scripts/notarize-app.sh
+/scripts/setup-dev-signing.sh
