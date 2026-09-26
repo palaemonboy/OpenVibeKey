@@ -21,6 +21,7 @@ final class AppLanguage: ObservableObject {
     static let shared = AppLanguage()
     private let defaults: UserDefaults
     private let preferredLanguages: () -> [String]
+    private var localeChanges: AnyCancellable?
 
     @Published var choice: AppLanguageChoice {
         didSet { defaults.set(choice.rawValue, forKey: Self.preferenceKey) }
@@ -30,6 +31,13 @@ final class AppLanguage: ObservableObject {
         self.defaults = defaults
         self.preferredLanguages = preferredLanguages
         choice = defaults.string(forKey: Self.preferenceKey).flatMap(AppLanguageChoice.init(rawValue:)) ?? .system
+        localeChanges = NotificationCenter.default.publisher(for: NSLocale.currentLocaleDidChangeNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.refreshSystemLanguage() }
+    }
+
+    func refreshSystemLanguage() {
+        if choice == .system { objectWillChange.send() }
     }
 
     var resolved: AppLanguageChoice { choice.resolved(preferredLanguages: preferredLanguages()) }
@@ -80,4 +88,3 @@ struct LocalizedMessage {
         return result
     }
 }
-

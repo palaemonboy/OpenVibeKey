@@ -8,6 +8,7 @@ import ServiceManagement
 // 菜单栏迷你面板：高频操作不用开设置窗。状态全部来自共享的 VibeVM，不新增任何设备命令。
 struct MiniPanel: View {
     @ObservedObject private var language = AppLanguage.shared
+    @ObservedObject private var permissions = PermissionCenter.shared
     @EnvironmentObject var vm: VibeVM
     @Environment(\.openWindow) private var openWindow
     @Environment(\.dismiss) private var dismiss
@@ -48,6 +49,14 @@ struct MiniPanel: View {
             } else {
                 Button(L("连接设备"), action: vm.connect)
                     .buttonStyle(.borderedProminent).controlSize(.small)
+            }
+            HStack {
+                Label(L(permissions.allGranted ? "权限已全部授予" : permissions.checked ? "权限待完善" : "正在检查权限…"),
+                      systemImage: permissions.allGranted ? "checkmark.shield.fill" : "exclamationmark.shield")
+                    .foregroundStyle(permissions.allGranted ? Color.green : Color.orange)
+                    .font(.caption)
+                Spacer()
+                Button(L("权限检查")) { permissions.present() }
             }
             Divider()
             // 输入设备段：段标题 + 刷新按钮 + 逐行列表，取代原来"一个 Picker + 一个锁按钮"。
@@ -113,7 +122,10 @@ struct MiniPanel: View {
             }
         }
         .padding(12).frame(width: 288)
-        .onAppear { launchAtLogin = (SMAppService.mainApp.status == .enabled) }
+        .onAppear {
+            launchAtLogin = (SMAppService.mainApp.status == .enabled)
+            PermissionCenter.shared.presentIfNeeded()
+        }
     }
 
     // 设备行：点主体 = 切到该设备（vm.setInput）；点右侧锁形按钮 = 锁定/解锁该设备。

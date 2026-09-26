@@ -1916,3 +1916,14 @@ main section {
     scroll-behavior: auto !important;
   }
 }
+
+/* Dial profile switching in the interactive product preview. */
+.dial-profile-demo { margin: 8px 0 12px; }
+.dial-profile-controls { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 11px; }
+.dial-profile-controls output { font-variant-numeric: tabular-nums; margin-left: auto; }
+.dial-profile-controls button { font: inherit; color: inherit; background: transparent; border: 1px solid currentColor; border-radius: 5px; padding: 3px 6px; cursor: pointer; }
+.dial-stepper { display: flex; flex-direction: column; gap: 2px; }
+.dial-stepper button { line-height: 1; padding: 0 5px; }
+.dial-profile-controls button:disabled { opacity: .35; cursor: default; }
+.dial-profile-controls button:focus-visible { outline: 2px solid #579aff; outline-offset: 2px; }
+#dial-profile-status { font-size: 11px; color: #31865c; }

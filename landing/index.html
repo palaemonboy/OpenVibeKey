@@ -209,6 +209,21 @@
                     </h4>
                   </div>
 
+                  <div class="dial-profile-demo">
+                    <div class="dial-profile-controls">
+                      <span data-vibekey-i18n="dialDemo.title">双击切换配置</span>
+                      <output id="dial-interval" aria-live="polite">0.5</output>
+                      <span data-vibekey-i18n="dialDemo.seconds">秒</span>
+                      <div class="dial-stepper">
+                        <button type="button" id="dial-interval-up" aria-label="增加双击间隔" data-vibekey-i18n-aria="dialDemo.up">▴</button>
+                        <button type="button" id="dial-interval-down" aria-label="减少双击间隔" data-vibekey-i18n-aria="dialDemo.down">▾</button>
+                      </div>
+                      <button type="button" id="dial-profile-demo" data-vibekey-i18n="dialDemo.simulate">模拟双击</button>
+                    </div>
+                    <p class="mw-demo-hint" data-vibekey-i18n="dialDemo.note">默认开启 · 0.1–1 秒。单击等待后执行原动作；双击只切换配置。此处为网页演示，不会修改设备。</p>
+                    <p id="dial-profile-status" role="status" hidden><span data-vibekey-i18n="dialDemo.switched">已切换到：</span> <strong class="profile-value" data-vibekey-i18n="demo.profile.default">默认</strong></p>
+                  </div>
+
                   <div class="shortcut-list">
                     <div class="shortcut-row" data-shortcut="dialLeft">
                       <div class="shortcut-row-top">
@@ -1035,8 +1050,8 @@
               <path d="M3.5 12L12 16.5L20.5 12" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
               <path d="M3.5 16L12 20.5L20.5 16" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
             </svg>
-            <h3 data-vibekey-i18n="features.f7.title">多套配置</h3>
-            <p data-vibekey-i18n="features.f7.desc">配置存档，可新增多套随时切换，出差、工作室、居家各留一套。</p>
+            <h3 data-vibekey-i18n="features.f7.title">双击旋钮切换配置</h3>
+            <p data-vibekey-i18n="features.f7.desc">保存工作、编程或居家等配置，双击旋钮即可循环切换并通知。默认开启，间隔默认 0.5 秒，可用上下按钮调整并自动保存。需 App 在后台运行及辅助功能权限。</p>
           </article>
 
           <article class="feature-card">

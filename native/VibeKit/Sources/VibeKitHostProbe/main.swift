@@ -82,6 +82,119 @@ do {
     check("试到第一个成功者即停", tried == ["F9", "F10", "F11"], "got \(tried)")
 }
 
+print("== Dial permission recovery ==")
+do {
+    var flow = DialPermissionFlow()
+    check("first denial starts monitoring", flow.request(trusted: false, canPost: false) == .requestPermission && flow.phase == .waiting)
+    check("closing settings is not permission", flow.observe(trusted: false) == .none && flow.phase == .waiting)
+    check("fresh grant prompts restart", flow.observe(trusted: true) == .promptRestart && flow.phase == .restartRequired)
+    check("polling never repeats restart alert", flow.observe(trusted: true) == .none)
+    check("retry after grant asks for restart", flow.request(trusted: true, canPost: true) == .promptRestart)
+    flow.cancel()
+    check("cancel discards pending grant", flow.observe(trusted: true) == .none && flow.phase == .idle)
+    var relaunched = DialPermissionFlow()
+    check("relaunch resumes saved enable intent", relaunched.resume(pending: true, trusted: true, canPost: true) == .enable)
+    check("resume does not loop restart prompt", relaunched.phase == .idle && relaunched.observe(trusted: true) == .none)
+    check("existing grant enables directly", relaunched.request(trusted: true, canPost: true) == .enable)
+    check("cached event permission requires restart", relaunched.request(trusted: true, canPost: false) == .promptRestart)
+    var denied = DialPermissionFlow()
+    check("restart without grant remains waiting", denied.resume(pending: true, trusted: false, canPost: false) == .requestPermission)
+    var untouched = DialPermissionFlow()
+    check("no user request means no prompt", untouched.resume(pending: false, trusted: false, canPost: false) == .none)
+}
+
+print("== Dial single/double click arbitration ==")
+for interval in [0.1, 0.4, 0.5, 0.6, 1.0] {
+    var clicks = DialClicks()
+    check("\(interval)s first press does nothing", clicks.press(at: 10, interval: interval).isEmpty)
+    clicks.release()
+    check("\(interval)s no early single", clicks.expire(at: 10 + interval - 0.001).isEmpty)
+    check("\(interval)s single at deadline", clicks.expire(at: 10 + interval) == [.single])
+    check("\(interval)s single fires once", clicks.expire(at: 20).isEmpty)
+    clicks.cancel()
+    _ = clicks.press(at: 10, interval: interval)
+    clicks.release()
+    check("\(interval)s double excludes single", clicks.press(at: 10 + interval - 0.001, interval: interval) == [.double])
+    check("\(interval)s no delayed single after double", clicks.expire(at: 20).isEmpty)
+    clicks.cancel()
+    _ = clicks.press(at: 10, interval: interval)
+    clicks.release()
+    check("\(interval)s inclusive double boundary", clicks.press(at: 10 + interval, interval: interval) == [.double])
+}
+do {
+    var clicks = DialClicks()
+    _ = clicks.press(at: 1, interval: 0.5)
+    check("held key repeat is not double", clicks.press(at: 1.2, interval: 0.5).isEmpty)
+    check("held key has one single", clicks.expire(at: 1.5) == [.single])
+    check("held key cannot start another single", clicks.press(at: 1.7, interval: 0.5).isEmpty)
+    clicks.release()
+    _ = clicks.press(at: 2, interval: 0.5)
+    clicks.release()
+    check("late second press flushes old single", clicks.press(at: 2.6, interval: 0.5) == [.single])
+    clicks.release()
+    check("late press starts independent single", clicks.expire(at: 3.1) == [.single])
+    _ = clicks.press(at: 4, interval: 0.5)
+    clicks.cancel()
+    check("profile change / disable cancels pending single", clicks.expire(at: 5).isEmpty)
+    _ = clicks.press(at: 6, interval: 0.5)
+    clicks.release()
+    check("double in triple", clicks.press(at: 6.2, interval: 0.5) == [.double])
+    clicks.release()
+    check("third press starts new sequence", clicks.press(at: 6.4, interval: 0.5).isEmpty)
+    check("third press yields only one single", clicks.expire(at: 7) == [.single])
+}
+check("interval validation", [0.1, 0.4, 0.5, 0.6, 1].allSatisfy(DialClicks.validInterval))
+check("invalid intervals rejected", [-1, 0, 0.09, 1.01, Double.nan, Double.infinity].allSatisfy { !DialClicks.validInterval($0) })
+print("== Dial capture isolation ==")
+let reserved = SentinelCombo(mainKey: "F9")
+check("all saved slot actions excluded", !DialCaptureKeys.candidates(preferred: "F9", used: [reserved.tokens]).contains(reserved))
+check("modifier order ignored", DialCaptureKeys.equivalent(["LCmd", "F9", "LOpt", "LCtrl"], reserved.tokens))
+check("right modifiers also excluded", !DialCaptureKeys.candidates(preferred: "F9", used: [["RCmd", "ROpt", "RCtrl", "F9"]]).contains(reserved))
+check("stable capture survives profile switch", DialCaptureKeys.candidates(preferred: "F12", used: []).first?.mainKey == "F12")
+check("capture exhaustion is explicit", DialCaptureKeys.candidates(preferred: nil, used: SentinelPool.all.map(\.tokens)).isEmpty)
+
+print("== Delayed single action event construction (never posted) ==")
+do {
+    let events = try DialSingleAction.events(for: ["LCmd", "C"])
+    check("Cmd+C creates balanced down/up", events.map { $0.type } == [.flagsChanged, .keyDown, .keyUp, .flagsChanged])
+    check("Cmd+C key codes", events.map { $0.getIntegerValueField(.keyboardEventKeycode) } == [55, 8, 8, 55])
+    check("modifier held for shortcut", events[1].flags.contains(.maskCommand) && events[2].flags.contains(.maskCommand))
+    check("modifier released", events[3].flags.isEmpty)
+    check("empty single action does nothing", try DialSingleAction.events(for: []).isEmpty)
+    for token in DialSingleAction.mediaCodes.keys {
+        let media = try DialSingleAction.events(for: [token])
+        check("\(token) creates balanced media events", media.count == 2 && media.allSatisfy { NSEvent(cgEvent: $0)?.type == .systemDefined })
+        let values = media.compactMap { NSEvent(cgEvent: $0)?.data1 }
+        check("\(token) media down/up payload", values.map { ($0 >> 8) & 0xFF } == [10, 11])
+        check("\(token) media key identity", values.allSatisfy { ($0 >> 16) == DialSingleAction.mediaCodes[token] })
+    }
+    for token in DialSingleAction.keyCodes.keys {
+        check("keyboard token \(token)", try DialSingleAction.events(for: [token]).count == 2)
+    }
+    check("unsupported key rejected", !DialSingleAction.supports(["Bogus"]))
+} catch { check("event construction", false, String(describing: error)) }
+
+print("== Profile cycling ==")
+check("empty list is a no-op", ProfileCycle.next(names: [], current: "work") == nil)
+check("single profile is a no-op", ProfileCycle.next(names: ["work"], current: "work") == nil)
+check("stable picker order", ProfileCycle.next(names: ["work", "coding", "default"], current: "coding") == "default")
+check("wrap to first", ProfileCycle.next(names: ["work", "coding", "default"], current: "work") == "coding")
+check("deleted current falls back to first", ProfileCycle.next(names: ["work", "coding"], current: "deleted") == "coding")
+check("duplicate names do not create a cycle", ProfileCycle.next(names: ["work", "work"], current: "work") == nil)
+do {
+    let legacy = Data(#"{"bundleID":"com.example.app","displayName":"Example","sentinelTokens":["LCtrl","LOpt","LCmd","F9"]}"#.utf8)
+    let old = try JSONDecoder().decode(AppBinding.self, from: legacy)
+    check("legacy bindings still open apps", !old.cyclesProfiles && old.action == nil)
+    var cycle = AppBinding(bundleID: "", displayName: "循环切换配置", sentinelTokens: old.sentinelTokens)
+    cycle.action = .cycleProfiles
+    let encoded = try JSONEncoder().encode(["dialP": cycle])
+    let restored = try JSONDecoder().decode([String: AppBinding].self, from: encoded)
+    check("cycle action survives profile persistence", restored["dialP"] == cycle && restored["dialP"]?.cyclesProfiles == true)
+    check("switching away from cycle clears its sentinel", SentinelBookkeeping.slotsLosingBinding(previous: ["dialP": cycle], next: [:], order: ["dialP"]) == ["dialP"])
+} catch {
+    check("profile action Codable", false, String(describing: error))
+}
+
 print("== AppBinding ==")
 do {
     let b = AppBinding(bundleID: "com.googlecode.iterm2", displayName: "iTerm",
@@ -263,8 +376,33 @@ do {
     c.unregister("probeA"); c.unregister("probeB")
     check("注销后 isRegistered 为假", !c.isRegistered("probeA") && !c.isRegistered("probeB"))
     c.unregister("从未注册过的 id")   // 不得崩溃
+    check("capture registration for profile reload", c.register(tokens: keepCombo.tokens, id: "probeKeep", released: {}, handler: {}))
+    check("ordinary binding before reload", c.register(tokens: otherCombo.tokens, id: "probeOther", handler: {}))
+    c.unregisterAll(except: ["probeKeep"])
+    check("profile registration preserves dial capture", c.registeredIDs == ["probeKeep"])
     c.unregisterAll()
     check("unregisterAll 清空", c.registeredIDs.isEmpty, "got \(c.registeredIDs)")
+}
+
+check("live grant overrides a helper denial", PermissionEvidence.granted(current: true, fresh: false))
+check("live grant survives unavailable helper", PermissionEvidence.granted(current: true, fresh: nil))
+check("fresh grant recovers stale live denial", PermissionEvidence.granted(current: false, fresh: true))
+check("two denials remain denied", !PermissionEvidence.granted(current: false, fresh: false))
+check("missing helper is not a grant", !PermissionEvidence.granted(current: false, fresh: nil))
+
+// Permission setup must neither restart on every launch nor retry a cancelled quit.
+do {
+    var setup = PermissionCompletion()
+    check("unknown permission baseline does not restart", !setup.observe(allGranted: nil))
+    check("already granted launch does not restart", !setup.observe(allGranted: true))
+    check("incomplete permissions keep waiting", !setup.observe(allGranted: false))
+    check("unknown polling result keeps waiting", !setup.observe(allGranted: nil))
+    check("last newly granted permission requests restart", setup.observe(allGranted: true))
+    check("repeated polling never requests a second restart", !setup.observe(allGranted: true))
+    check("revocation does not restart", !setup.observe(allGranted: false))
+    check("cancelled restart cannot loop", !setup.observe(allGranted: true))
+    var relaunched = PermissionCompletion()
+    check("authorized replacement process stays running", !relaunched.observe(allGranted: true))
 }
 
 print(String(repeating: "-", count: 40))

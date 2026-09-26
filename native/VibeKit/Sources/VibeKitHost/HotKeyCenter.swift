@@ -22,6 +22,7 @@ public final class HotKeyCenter {
         let keyCode: UInt32
         let modifiers: UInt32
         let handler: () -> Void
+        let released: () -> Void
     }
 
     private var entries: [String: Entry] = [:]
@@ -48,13 +49,13 @@ public final class HotKeyCenter {
     /// 独立进程用相同键码/修饰键/GetApplicationEventTarget() 先后注册 ⌃⌥⌘F9，都返回
     /// noErr。所以「别的软件抢了这个组合」这件事，这里返回 true，上层无从知晓。
     @discardableResult
-    public func register(tokens: [String], id: String, handler: @escaping () -> Void) -> Bool {
+    public func register(tokens: [String], id: String, released: @escaping () -> Void = {}, handler: @escaping () -> Void) -> Bool {
         guard let spec = Self.carbonSpec(tokens) else { return false }   // 无效 tokens：不碰已有条目
 
         if let existing = entries[id], existing.keyCode == spec.keyCode, existing.modifiers == spec.modifiers {
             // 同 id 同组合重注册：只是换个 handler，Carbon 那边的注册原样保留。
             entries[id] = Entry(ref: existing.ref, carbonID: existing.carbonID,
-                                 keyCode: existing.keyCode, modifiers: existing.modifiers, handler: handler)
+                                 keyCode: existing.keyCode, modifiers: existing.modifiers, handler: handler, released: released)
             return true
         }
 
@@ -72,7 +73,7 @@ public final class HotKeyCenter {
         if let old = entries[id] {
             UnregisterEventHotKey(old.ref)   // 新的已经注册成功，才轮到释放旧的
         }
-        entries[id] = Entry(ref: ref, carbonID: carbonID, keyCode: spec.keyCode, modifiers: spec.modifiers, handler: handler)
+        entries[id] = Entry(ref: ref, carbonID: carbonID, keyCode: spec.keyCode, modifiers: spec.modifiers, handler: handler, released: released)
         return true
     }
 
@@ -81,11 +82,11 @@ public final class HotKeyCenter {
         UnregisterEventHotKey(e.ref)
     }
 
-    public func unregisterAll() {
+    public func unregisterAll(except preserved: Set<String> = []) {
         // 先把 key 拷成数组再遍历：unregister 会改 entries。
         // 值语义 + COW 让直接遍历 entries.keys 目前也不会崩，但那是「恰好没事」，
         // 读起来是一处边遍历边改集合的错误，不留给后人去赌。
-        for id in Array(entries.keys) { unregister(id) }
+        for id in Array(entries.keys) where !preserved.contains(id) { unregister(id) }
     }
 
     // MARK: 内部
@@ -128,21 +129,22 @@ public final class HotKeyCenter {
     private func installHandlerIfNeeded() {
         guard !handlerInstalled else { return }
         handlerInstalled = true
-        var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard),
-                                 eventKind: UInt32(kEventHotKeyPressed))
+        var specs = [EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed)),
+                     EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyReleased))]
         InstallEventHandler(GetApplicationEventTarget(), { _, event, _ -> OSStatus in
             var hkID = EventHotKeyID()
             let st = GetEventParameter(event, EventParamName(kEventParamDirectObject),
                                        EventParamType(typeEventHotKeyID), nil,
                                        MemoryLayout<EventHotKeyID>.size, nil, &hkID)
             guard st == noErr else { return st }
-            HotKeyCenter.shared.fire(hkID.id)
+            HotKeyCenter.shared.fire(hkID.id, released: GetEventKind(event) == UInt32(kEventHotKeyReleased))
             return noErr
-        }, 1, &spec, nil, nil)
+        }, 2, &specs, nil, nil)
     }
 
     /// Carbon 回调派发在主 run loop 上，直接查表调用即可。
-    private func fire(_ carbonID: UInt32) {
-        entries.values.first { $0.carbonID == carbonID }?.handler()
+    private func fire(_ carbonID: UInt32, released: Bool) {
+        guard let entry = entries.values.first(where: { $0.carbonID == carbonID }) else { return }
+        if released { entry.released() } else { entry.handler() }
     }
 }

@@ -16,6 +16,7 @@ struct ButtonState: Identifiable, Equatable {
     var current: String = "读取中…"
     // 「打开 App」绑定的镜像。真身在 VibeVM.appBindings，这里只为渲染方便。
     // 非 nil 时 mods/mainKey 存的是哨兵组合，tokens 因此仍然给出该写进设备的东西。
+    var cyclesProfiles = false
     var appName: String? = nil
     var sentinelDisplay: String? = nil      // 如 "⌃⌥⌘F9"
     var appMissing = false                  // 上次激活失败：找不到该 App（多半被卸载了）
@@ -73,6 +74,8 @@ final class VibeVM: ObservableObject {
     }()
 
     private static func migrateFromUnbundledDefaultsIfNeeded() {
+        // 打包开发版使用独立配置，不导入历史 swift run 配置。
+        guard Bundle.main.bundleIdentifier != "com.openvibekey.app.dev" else { return }
         let std = UserDefaults.standard
         let flag = "migratedFromUnbundled.v1"
         guard !std.bool(forKey: flag) else { return }
@@ -213,6 +216,39 @@ final class VibeVM: ObservableObject {
     /// （改麦克风、调灯效、动降噪、改待机时长……）都会把**全空的按键配置**写进活动存档，
     /// 把用户真实的配置覆盖掉。只用 connected 当闸门挡不住这个，必须再加一道水位。
     private var slotsHydrated = false
+    @Published private(set) var applyingProfile = false
+    private var profileApplyID = UUID()
+    private var profileApplySucceeded = false
+
+    let dialDoubleClickEnabled = true
+    @Published private(set) var dialDoubleClickInterval: Double = {
+        let value = VibeVM.migratedDefaults.double(forKey: "dialDoubleClick.interval")
+        return DialClicks.validInterval(value) ? value : 0.5
+    }()
+    @Published private(set) var dialGestureBusy = false
+    @Published private(set) var dialGestureReady = false
+    @Published var dialGestureNotice: LocalizedMessage?
+    private var dialCaptureCombo: SentinelCombo?
+    private var dialClicks = DialClicks()
+    private var dialClickGeneration = UUID()
+    private var dialClickTimer: Timer?
+    private var dialGestureGeneration = UUID()
+    private var quitting = false
+    @Published private(set) var dialPermissionPending = VibeVM.migratedDefaults.bool(forKey: "dialDoubleClick.pendingEnable")
+    @Published private(set) var dialPermissionRestartRequired = false
+    private var dialPermissionFlow = DialPermissionFlow()
+    private var dialPermissionTimer: Timer?
+    private let dialPermissionProbe = DialPermissionProbe()
+    private var dialPermissionNextProbe: TimeInterval = 0
+    private struct DialRestore: Codable, Equatable {
+        var index: UInt8
+        var tokens: [String]
+    }
+    private var dialRestore: DialRestore? = {
+        guard let data = VibeVM.migratedDefaults.data(forKey: "dialDoubleClick.restore") else { return nil }
+        return try? JSONDecoder().decode(DialRestore.self, from: data)
+    }()
+
 
     /// 哨兵相关的一次性提示（自动换键 / 池耗尽 / App 找不到）。UI 显示后由用户关掉，置 nil。
     @Published var sentinelNotice: LocalizedMessage? = nil
@@ -237,7 +273,7 @@ final class VibeVM: ObservableObject {
     /// 而放在外面就要在四个调用点各抄一遍，漏掉任何一处，行里就会留着一句陈旧的
     /// 「打开 App：iTerm2」——曾经就是这么抄了四份。
     private func dropAppBinding(_ slot: String) {
-        mutateSlotState(slot) { $0.appName = nil; $0.sentinelDisplay = nil; $0.appMissing = false; $0.sentinelDead = false }
+        mutateSlotState(slot) { $0.cyclesProfiles = false; $0.appName = nil; $0.sentinelDisplay = nil; $0.appMissing = false; $0.sentinelDead = false }
         guard appBindings[slot] != nil else { return }
         HotKeyCenter.shared.unregister(slot)
         appBindings[slot] = nil
@@ -258,6 +294,7 @@ final class VibeVM: ObservableObject {
     /// 某个槽此刻是否确实空着——没绑 App、没媒体键、也没普通快捷键。
     /// 补清哨兵前的复核依据：不空就说明已经被别的东西占住了，再写空会抹掉刚落地的配置。
     private func slotIsVacant(_ slot: String) -> Bool {
+        if slot == "dialP", dialCaptureCombo != nil { return false }
         guard appBindings[slot] == nil, mediaFunc[slot] == nil else { return false }
         return slotState(slot)?.tokens.isEmpty ?? true
     }
@@ -379,13 +416,18 @@ final class VibeVM: ObservableObject {
                 self.nrLevel = nr; self.micUiFlick = uif; self.indicatorBreathe = brth
                 self.ledTypes = ltypes.count == 4 ? ltypes : [2, 0, 0, 1]
                 for i in self.buttons.indices { self.fillState(&self.buttons[i], from: reads[self.buttons[i].id] ?? nil) }
-                for k in self.dial.indices { self.fillState(&self.dial[k], from: k < dialReads.count ? dialReads[k] : nil) }
+                for k in self.dial.indices {
+                    let read = k < dialReads.count ? dialReads[k] : nil
+                    let restored = self.dial[k].id == "dialP" ? self.dialRestore?.tokens : nil
+                    self.fillState(&self.dial[k], from: restored ?? read)
+                }
                 self.slotsHydrated = true   // 首次使用：ButtonState 刚从设备读回填好，同样算加载完成
                 self.ensureActiveProfile()
                 // 这条分支不经过 applyProfile，所以哨兵得自己补写一遍。
                 // 真会走到：本地还没建过配置（首次使用）时用户就先离线绑了 App——
                 // 那时 writeSentinelToDevice 是空转，设备里从来没有过这串哨兵。
                 self.flushBoundSentinelsToDevice()
+                self.syncDialGesture()
             }
         }
     }
@@ -436,6 +478,8 @@ final class VibeVM: ObservableObject {
 
     // 在线→离线：AU05 关机但连接器仍在，清掉过期信息、退回等待态。
     private func goOffline() {
+        cancelDialClicks()
+        dialGestureReady = false
         // 水位跟着掉：下次上线又会经历一段「connected 为真但状态没填」的窗口
         slotsHydrated = false
         connected = false; status = "AU05 未开机（连接器仍在）"
@@ -456,16 +500,18 @@ final class VibeVM: ObservableObject {
         if APP_BINDABLE_SLOTS.contains(s.id), let ab = appBindings[s.id] {
             s.mods = Set(ab.sentinelTokens.filter { VibeKitKeymap.isModifierToken($0) })
             s.mainKey = ab.sentinelTokens.first { !VibeKitKeymap.isModifierToken($0) }
-            s.appName = ab.displayName
+            s.cyclesProfiles = ab.cyclesProfiles
+            s.appName = ab.cyclesProfiles ? nil : ab.displayName
+            if ab.cyclesProfiles { s.appMissing = false }
             s.sentinelDisplay = ab.sentinelDisplay
-            s.current = "打开 App：\(ab.displayName)"
+            s.current = ab.cyclesProfiles ? "循环切换配置" : "打开 App：\(ab.displayName)"
             // 死活由「热键此刻注册着没有」直接推出，不另存一份状态——HotKeyCenter 就是唯一真相。
             // 注意调用时机：applyProfile 里 fillState 跑在重注册**之前**，那一轮的取值可能是旧的，
             // 所以重注册收尾时会把四个可绑槽位统统 refreshSlotUI 一遍。
             s.sentinelDead = !HotKeyCenter.shared.isRegistered(s.id)
             return
         }
-        s.appName = nil; s.sentinelDisplay = nil; s.appMissing = false; s.sentinelDead = false
+        s.cyclesProfiles = false; s.appName = nil; s.sentinelDisplay = nil; s.appMissing = false; s.sentinelDead = false
         // 固定功能槽次之：设备读回的是被覆盖前的旧 0x50 快捷键，不代表当前实际行为。
         if let f = mediaFunc[s.id], let label = mediaLabel(f) {
             s.mods = []; s.mainKey = mediaToken(f); s.current = label; return
@@ -479,6 +525,17 @@ final class VibeVM: ObservableObject {
 
     // MARK: 旋钮动作（复用 setShortcut/getShortcut，index = dialIdx）
     func applyDial(_ i: Int) {
+        if dial[i].id == "dialP", dialDoubleClickEnabled || dialRestore != nil {
+            cancelDialClicks()
+            dropAppBinding("dialP")
+            let tokens = dial[i].tokens
+            mediaFunc["dialP"] = tokens.compactMap(mediaFuncIndex).first
+            persistMediaFunc()
+            fillState(&dial[i], from: tokens)
+            autosave()
+            syncDialGesture()
+            return
+        }
         guard let d = dev else { return }
         let idx = UInt8(max(0, min(255, dialIdx[i])))
         dropAppBinding(dial[i].id)   // 三者互斥（展示字段的复位在 dropAppBinding 里）
@@ -500,6 +557,15 @@ final class VibeVM: ObservableObject {
         autosave()
     }
     func clearDial(_ i: Int) {
+        if dial[i].id == "dialP", dialDoubleClickEnabled || dialRestore != nil {
+            cancelDialClicks()
+            dropAppBinding("dialP")
+            mediaFunc["dialP"] = nil; persistMediaFunc()
+            fillState(&dial[i], from: [])
+            autosave()
+            syncDialGesture()
+            return
+        }
         guard let d = dev else { return }
         let idx = UInt8(max(0, min(255, dialIdx[i])))
         dropAppBinding(dial[i].id)
@@ -525,6 +591,7 @@ final class VibeVM: ObservableObject {
     // 旋钮标定：给 index 3…9 各写入对应「数字键」(3→"3" … 9→"9")，彼此可区分。
     // 用户在文本框里转动/按下旋钮，冒出哪个数字即知该动作对应哪个 index。不动 0/1/2(物理按键)。
     func writeDialMarkers() {
+        guard !dialDoubleClickEnabled, dialRestore == nil else { return }
         guard let d = dev else { return }
         io.async {
             for i in 3...9 { try? d.setShortcut(index: UInt8(i), tokens: [String(i)]) }
@@ -533,6 +600,7 @@ final class VibeVM: ObservableObject {
     }
     // 调整某方向的 index 并重新读回其当前映射。
     func setDialIndex(_ i: Int, _ v: Int) {
+        guard !dialDoubleClickEnabled, dialRestore == nil else { return }
         dialIdx[i] = max(0, min(15, v))
         defaults.set(dialIdx, forKey: "dialIdx")
         guard let d = dev else { return }
@@ -640,6 +708,17 @@ final class VibeVM: ObservableObject {
 
     // MARK: 本地配置存档（Profile）
     init() {
+        AppLifecycle.terminationCancelled = { [weak self] in
+            guard let self else { return }
+            self.quitting = false
+            PermissionCenter.shared.restartCancelled()
+            self.dialGestureBusy = false
+            self.syncDialGesture()
+        }
+        AppLifecycle.prepareQuit = { [weak self] completion in
+            guard let self else { completion(true); return }
+            self.prepareDialQuit(completion: completion)
+        }
         // 名字回落匹配命中时，enforcer 会把解析出的真实 uid 回调回来——存下来，下次启动就能走
         // uid 精确匹配，不用再依赖子串匹配。回调可能在任意队列触发，切回主线程再碰 @Published/UserDefaults。
         enforcer.onResolvedUID = { [weak self] uid in
@@ -663,6 +742,7 @@ final class VibeVM: ObservableObject {
             // 这里**只还原存档里的组合**，不换键：此刻 dev 还是 nil，换出来的新组合写不进设备，
             // 界面却会一口咬定「已自动更换为 ⌃⌥⌘F10」而设备还在发 F9。
             // 存档组合注册不上的槽就是死的，如实标 sentinelDead；换键留给设备在场的 applyProfile。
+            self?.startDialPermissionMonitoring()
             self?.registerStoredSentinels()
             self?.connectIfNeeded()
         }
@@ -707,6 +787,11 @@ final class VibeVM: ObservableObject {
         let now = Date()
         var all = loadProfiles(); all[activeName] = snapshot(now.timeIntervalSince1970); persistProfiles(all)
         activeUpdatedAt = now; saveTick &+= 1
+        // A newly edited ordinary button must never become another dial trigger.
+        if let capture = dialCaptureCombo,
+           (buttons + dial).contains(where: { DialCaptureKeys.equivalent($0.tokens, capture.tokens) }) {
+            syncDialGesture()
+        }
     }
     /// 把「打开 App」绑定单独落进活动配置——设备不在线时也必须落。
     ///
@@ -760,12 +845,16 @@ final class VibeVM: ObservableObject {
     }
     /// 新增一个配置（用当前状态），并切为活动。
     func addProfile(_ name: String) {
+        guard !dialGestureBusy, !applyingProfile, !quitting else { return }
+        cancelDialClicks()
         let n = name.trimmingCharacters(in: .whitespacesAndNewlines); guard !n.isEmpty else { return }
         let now = Date()
         var all = loadProfiles(); all[n] = snapshot(now.timeIntervalSince1970); persistProfiles(all)
         setActive(n); activeUpdatedAt = now; saveTick &+= 1
     }
     func deleteProfile(_ name: String) {
+        guard !dialGestureBusy, !applyingProfile, !quitting else { return }
+        cancelDialClicks()
         var all = loadProfiles(); all[name] = nil; persistProfiles(all)
         guard activeName == name else { return }
         // 删掉的是当前活动配置，必须把接任的那份**真正加载一遍**（回填 UI + appBindings +
@@ -782,6 +871,7 @@ final class VibeVM: ObservableObject {
     }
     /// 切换/加载某配置：设为活动 + 回填 UI + 写入设备。
     func loadProfile(_ name: String) {
+        guard !dialGestureBusy, !quitting else { return }
         guard let p = loadProfiles()[name] else { return }
         setActive(name)
         activeUpdatedAt = p.updatedAt.map { Date(timeIntervalSince1970: $0) }
@@ -789,7 +879,13 @@ final class VibeVM: ObservableObject {
     }
 
     /// 把一份配置落地：回填 UI + 写入设备。连接时（本地为准）与手动切换配置共用。
-    private func applyProfile(_ p: Profile) {
+    private func applyProfile(_ p: Profile, notifyName: String? = nil) {
+        cancelDialClicks()
+        dialGestureReady = false
+        let applyID = UUID()
+        profileApplyID = applyID
+        applyingProfile = true
+        profileApplySucceeded = false
         // 「打开 App」绑定直接来自存档——tokens 里只有哨兵组合键，反推不出绑的是哪个 App。
         // 老存档没有这个字段（Optional，Swift 合成的 Codable 会给 nil），退化成「一个都没绑」。
         let previousBindings = appBindings
@@ -826,6 +922,8 @@ final class VibeVM: ObservableObject {
         if let lt = p.ledTypes, lt.count == 4 { ledTypes = lt }
         standbyTime = p.standbyTime ?? standbyTime
         sleepTime = p.sleepTime ?? sleepTime
+        // Only the device mirror is overridden; snapshots retain the user's single action.
+        let capture = prepareDialCapture()
         // 写入设备（离线生效）
         // 用 if let 而非 guard-return：末尾的哨兵重注册在设备离线时也必须跑到。
         if let d = dev {
@@ -834,7 +932,8 @@ final class VibeVM: ObservableObject {
         // 而 bindApp 写进设备的是 SentinelPool.modifiers 顺序 [LCtrl,LOpt,LCmd,F9]。
         // 同一个逻辑组合两套字节序列，且只有后者在 Oracle 里被逐字节钉死。一份真相：sentinelTokens。
         func writeTokens(_ slot: String, _ mirrored: [String]) -> [String] {
-            appBindings[slot]?.sentinelTokens ?? mirrored
+            if slot == "dialP", let capture { return capture.tokens }
+            return appBindings[slot]?.sentinelTokens ?? mirrored
         }
         let bt = (0..<3).map { writeTokens("btn\($0 + 1)", p.buttons[safe: $0] ?? []) }
         let dt = dial.indices.map { writeTokens(dial[$0].id, p.dial[safe: $0] ?? []) }
@@ -888,11 +987,21 @@ final class VibeVM: ObservableObject {
                 writeSlot(dialLabels[safe: i] ?? "旋钮 \(i)", idxs[i], dt[i])
             }
             // 全局设置逐条之间留点间隔——批量无节流发送时固件会丢帧。
-            for send in [{ try? d.setLedMode(lm) }, { try? d.setLedBrightness(lb) }, { try? d.setMicNRLevel(nr) },
-                         { try? d.setMicEnable(mic) }, { try? d.setMicUiFlick(uif) }, { try? d.setIndicatorBreathe(brth) },
-                         { if lts.count == 4 { try? d.setLedTypes(lts, focus: 0) } },
-                         { try? d.setStandbyTime(sbt) }, { try? d.setSleepTime(slt) }] {
-                send(); Thread.sleep(forTimeInterval: 0.08)
+            let globalWrites: [() throws -> Void] = [
+                { try d.setLedMode(lm) }, { try d.setLedBrightness(lb) }, { try d.setMicNRLevel(nr) },
+                { try d.setMicEnable(mic) }, { try d.setMicUiFlick(uif) }, { try d.setIndicatorBreathe(brth) },
+                { if lts.count == 4 { try d.setLedTypes(lts, focus: 0) } },
+                { try d.setStandbyTime(sbt) }, { try d.setSleepTime(slt) }
+            ]
+            var globalsSucceeded = true
+            for send in globalWrites {
+                do { try send() } catch { globalsSucceeded = false }
+                Thread.sleep(forTimeInterval: 0.08)
+            }
+            let succeeded = globalsSucceeded && mismatched.isEmpty
+            DispatchQueue.main.async { [weak self] in
+                guard let self, self.profileApplyID == applyID else { return }
+                self.profileApplySucceeded = succeeded
             }
             // 回读对不上的如实告诉用户。沉默地让界面和设备各说各话是这条路的老毛病。
             if !mismatched.isEmpty {
@@ -913,6 +1022,20 @@ final class VibeVM: ObservableObject {
         // 「换键」只在这里做，不在 init 里做（见 registerStoredSentinels 的注释）：
         // 换键必须连着把新组合写进设备，而设备只有到了这里才可能在场。
         reregisterSentinels()
+        io.async {
+            DispatchQueue.main.async { [weak self] in
+                guard let self, self.profileApplyID == applyID else { return }
+                self.applyingProfile = false
+                if !self.quitting { self.syncDialGesture() }
+                if let name = notifyName {
+                    let message = self.profileApplySucceeded && self.connected
+                        ? LocalizedMessage("已切换到：{0}", name)
+                        : LocalizedMessage("配置「{0}」未完全写入设备，请重试。", name)
+                    self.sentinelNotice = message
+                    ProfileNotifications.shared.post(message.rendered())
+                }
+            }
+        }
     }
     func clearShortcut(_ i: Int) {
         guard let d = dev, let idx = VibeKitDevice.keyIndex(buttons[i].id) else { return }
@@ -933,7 +1056,8 @@ final class VibeVM: ObservableObject {
 
     /// 给某槽绑定「打开 App」。返回 false = 哨兵池耗尽（已写 sentinelNotice）。
     @discardableResult
-    func bindApp(slot: String, bundleID: String, displayName: String) -> Bool {
+    func bindApp(slot: String, bundleID: String, displayName: String, action: HostAction? = nil) -> Bool {
+        guard action == nil || slot == "dialP" else { return false }
         guard APP_BINDABLE_SLOTS.contains(slot), let idx = slotIndex(slot) else { return false }
         // 不在这里提前 unregister(slot)：taken 本就排除了本槽自己，
         // HotKeyCenter.register 对同 id 有「新组合先注册成功、再释放旧的」的安全换绑语义，
@@ -946,21 +1070,35 @@ final class VibeVM: ObservableObject {
             return false
         }
         appBindings[slot] = AppBinding(bundleID: bundleID, displayName: displayName, sentinelTokens: combo.tokens)
+        appBindings[slot]?.action = action
         persistAppBindings()
         mediaFunc[slot] = nil; persistMediaFunc()   // 三者互斥
-        writeSentinelToDevice(index: idx, tokens: combo.tokens)
+        if slot != "dialP" || (!dialDoubleClickEnabled && dialRestore == nil) {
+            writeSentinelToDevice(index: idx, tokens: combo.tokens)
+        }
         refreshSlotUI(slot)
         // 不能用 autosave()——它离线时会跳过，绑定就只留在 appBindings.v1 里，
         // 等设备连上 applyProfile 从陈旧配置里恢复，刚绑的 App 凭空消失。
         saveAppBindingsToProfile(slots: [slot])
+        if slot == "dialP", dialDoubleClickEnabled || dialRestore != nil { syncDialGesture() }
         return true
+    }
+
+    func bindProfileCycle() {
+        guard bindApp(slot: "dialP", bundleID: "", displayName: "循环切换配置", action: .cycleProfiles) else { return }
+        ProfileNotifications.shared.requestPermission { [weak self] granted in
+            guard !granted else { return }
+            DispatchQueue.main.async {
+                self?.sentinelNotice = LocalizedMessage("通知未开启；配置仍可切换。请在系统设置中允许本 App 发送通知。")
+            }
+        }
     }
 
     /// 解绑：注销热键 + 清本地记账 + 清空设备该槽。
     func unbindApp(slot: String) {
         guard appBindings[slot] != nil else { return }
         dropAppBinding(slot)
-        if let d = dev, let idx = slotIndex(slot) {
+        if let d = dev, let idx = slotIndex(slot), slot != "dialP" || (!dialDoubleClickEnabled && dialRestore == nil) {
             // setKeyboardShortcut(tokens: []) 会连 0x10 固定功能一起清 —— 两套存储都得清干净
             io.async { try? d.setKeyboardShortcut(index: idx, tokens: []) }
         }
@@ -968,6 +1106,7 @@ final class VibeVM: ObservableObject {
         // 等设备回来由 applyProfile 里的 drain 补上。
         refreshSlotUI(slot)
         saveAppBindingsToProfile(slots: [slot])
+        if slot == "dialP", dialDoubleClickEnabled || dialRestore != nil { syncDialGesture() }
     }
 
     /// 「打开 App」绑定的一览行。给**离线**时的那个区块用——设置界面的快捷键卡整块只在
@@ -987,7 +1126,7 @@ final class VibeVM: ObservableObject {
             // HotKeyCenter 不是 ObservableObject，直接读它 SwiftUI 不会因它变化而重绘。
             let s = slotState(slot)
             let title = dial.contains { $0.id == slot } ? L("旋钮 · {0}", L(s?.title ?? slot)) : L(s?.title ?? slot)
-            return AppBindingRow(id: slot, title: title, appName: ab.displayName,
+            return AppBindingRow(id: slot, title: title, appName: ab.cyclesProfiles ? L("循环切换配置") : ab.displayName,
                                  sentinel: ab.sentinelDisplay ?? "—",
                                  dead: s?.sentinelDead ?? false)
         }
@@ -1005,7 +1144,11 @@ final class VibeVM: ObservableObject {
     /// 把「打开 App：iTerm」这行字冲掉。哨兵写的是什么我们自己最清楚，不需要问设备。
     private func writeSentinelToDevice(index: UInt8, tokens: [String]) {
         guard let d = dev else { return }
-        io.async { try? d.setKeyboardShortcut(index: index, tokens: tokens) }
+        if index == slotIndex("dialP"), dialCaptureCombo != nil {
+            persistDialRestore(DialRestore(index: index, tokens: originalDialTokens))
+        }
+        let written = index == slotIndex("dialP") ? (dialCaptureCombo?.tokens ?? tokens) : tokens
+        io.async { try? d.setKeyboardShortcut(index: index, tokens: written) }
     }
 
     /// 把当前所有 App 绑定的哨兵一次性写进设备。给「不经过 applyProfile 的上线路径」补课。
@@ -1020,6 +1163,7 @@ final class VibeVM: ObservableObject {
     /// 哨兵热键被按下：激活绑定的 App。
     private func fireAppBinding(slot: String) {
         guard let ab = appBindings[slot] else { return }
+        if ab.cyclesProfiles { cycleDialProfile(); return }
         do {
             try AppLauncher.activate(bundleID: ab.bundleID)
             setAppMissing(slot, false)
@@ -1047,7 +1191,7 @@ final class VibeVM: ObservableObject {
     /// applyProfile（那时 dev 在场，换完能立刻写进设备）。
     /// 顺带解决了启动时的重复劳动：init 换一次键、applyProfile 从存档改回去、再换一次。
     func registerStoredSentinels() {
-        HotKeyCenter.shared.unregisterAll()
+        HotKeyCenter.shared.unregisterAll(except: ["dialGesture"])
         var taken = Set<String>()
         for slot in APP_BINDABLE_SLOT_ORDER {
             guard let ab = appBindings[slot], let mk = ab.sentinelMainKey, !taken.contains(mk) else { continue }
@@ -1069,7 +1213,7 @@ final class VibeVM: ObservableObject {
     /// 根本不会进。届时两个进程都注册着同一个组合，事件归谁未测，绑定可能静默失效。
     /// 不做这件事的话，用户装个新软件就会让某个按键静默失效，而且毫无线索。
     func reregisterSentinels() {
-        HotKeyCenter.shared.unregisterAll()
+        HotKeyCenter.shared.unregisterAll(except: ["dialGesture"])
         var taken = Set<String>()
         var changed: [String] = []
         var changedSlots: [String] = []
@@ -1268,5 +1412,292 @@ final class VibeVM: ObservableObject {
         // 依当前有效外观在 亮 ↔ 暗 间切换（system 状态下按系统当前值起步）。
         let effectiveDark = scheme == "dark" || (scheme == "system" && NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua)
         setScheme(effectiveDark ? "light" : "dark")
+    }
+}
+
+// MARK: - Global dial-only single/double click handling
+extension VibeVM {
+    private var originalDialTokens: [String] {
+        appBindings["dialP"]?.sentinelTokens ?? dial.first(where: { $0.id == "dialP" })?.tokens ?? []
+    }
+
+    private func persistDialRestore(_ record: DialRestore?) {
+        dialRestore = record
+        if let record, let data = try? JSONEncoder().encode(record) {
+            defaults.set(data, forKey: "dialDoubleClick.restore")
+        } else { defaults.removeObject(forKey: "dialDoubleClick.restore") }
+    }
+
+    func setDialDoubleClickInterval(_ value: Double) {
+        guard DialClicks.validInterval(value) else {
+            dialGestureNotice = LocalizedMessage("请输入 0.1 到 1 秒之间的时间。")
+            return
+        }
+        cancelDialClicks()
+        dialDoubleClickInterval = value
+        defaults.set(value, forKey: "dialDoubleClick.interval")
+        dialGestureNotice = nil
+    }
+
+    /// Register before writing the capture key; never put that key into the user's profile.
+    private func prepareDialCapture() -> SentinelCombo? {
+        guard dialDoubleClickEnabled, !dialPermissionPending, !quitting, connected, DialSingleAction.canPost else {
+            dialCaptureCombo = nil
+            if dialDoubleClickEnabled, !dialPermissionPending, !DialSingleAction.canPost {
+                dialGestureNotice = LocalizedMessage("双击功能已暂停，请在权限检查窗口中恢复辅助功能权限。")
+            }
+            return nil
+        }
+        guard let index = slotIndex("dialP") else { return nil }
+        let profiles = loadProfiles().values
+        var used = profiles.flatMap { $0.buttons + $0.dial }
+        used += profiles.flatMap { ($0.appBindings ?? [:]).values.map(\.sentinelTokens) }
+        used += buttons.map(\.tokens) + dial.map(\.tokens) + appBindings.values.map(\.sentinelTokens)
+        let preferred = defaults.string(forKey: "dialDoubleClick.key")
+        let candidates = DialCaptureKeys.candidates(preferred: preferred, used: used)
+        guard let combo = candidates.first(where: { candidate in
+            return HotKeyCenter.shared.register(tokens: candidate.tokens, id: "dialGesture", released: { [weak self] in
+                self?.dialClicks.release()
+            }) { [weak self] in self?.dialCapturePressed() }
+        }) else {
+            dialCaptureCombo = nil
+            dialGestureNotice = LocalizedMessage("无法分配旋钮双击热键，已保留原单击功能。请减少冲突的快捷键后重试。")
+            return nil
+        }
+        dialCaptureCombo = combo
+        defaults.set(combo.mainKey, forKey: "dialDoubleClick.key")
+        // Write-ahead recovery record also survives a crash or forced quit.
+        persistDialRestore(DialRestore(index: index, tokens: originalDialTokens))
+        return combo
+    }
+
+    nonisolated private static func dialMatches(_ target: DialRestore, device: VibeKitDevice) -> Bool {
+        guard let shortcut = device.getShortcut(index: target.index),
+              let fixedFunction = device.getButtonFixedFunction(index: target.index) else { return false }
+        if let media = target.tokens.compactMap(mediaFuncIndex).first {
+            return shortcut.isEmpty && fixedFunction == media
+        }
+        return Set(shortcut) == Set(target.tokens) && fixedFunction == 0
+    }
+
+    nonisolated private static func writeDial(_ target: DialRestore, to device: VibeKitDevice) throws -> Bool {
+        if dialMatches(target, device: device) { return true }
+        if let media = target.tokens.compactMap(mediaFuncIndex).first {
+            try device.setMediaKey(index: target.index, funcIndex: media)
+        } else {
+            try device.setKeyboardShortcut(index: target.index, tokens: target.tokens)
+        }
+        Thread.sleep(forTimeInterval: 0.08)
+        return dialMatches(target, device: device)
+    }
+
+    /// Runs on the existing serial device queue, including restoration of an empty single action.
+    private func syncDialGesture() {
+        cancelDialClicks()
+        dialGestureReady = false
+        guard !quitting, !applyingProfile, connected, slotsHydrated, let device = dev,
+              let index = slotIndex("dialP") else { return }
+        let hadRestore = dialRestore != nil
+        let capture = prepareDialCapture()
+        guard capture != nil || hadRestore else { return }
+        let generation = UUID()
+        dialGestureGeneration = generation
+        dialGestureBusy = true
+        let original = DialRestore(index: index, tokens: originalDialTokens)
+        let target = DialRestore(index: index, tokens: capture?.tokens ?? original.tokens)
+        // The original action may have been edited while capture was enabled.
+        persistDialRestore(original)
+        io.async {
+            var ok = (try? Self.writeDial(target, to: device)) == true
+            var restored = false
+            if !ok, capture != nil {
+                restored = (try? Self.writeDial(original, to: device)) == true
+            } else if ok, capture == nil { restored = true }
+            if restored { ok = true }
+            let succeeded = ok, didRestore = restored
+            DispatchQueue.main.async {
+                guard self.dialGestureGeneration == generation, !self.quitting else { return }
+                self.dialGestureBusy = false
+                self.dialGestureReady = succeeded && !didRestore && capture != nil && self.connected
+                if didRestore {
+                    self.persistDialRestore(nil)
+                    self.dialCaptureCombo = nil
+                    HotKeyCenter.shared.unregister("dialGesture")
+                }
+                if !succeeded || (capture != nil && didRestore) {
+                    self.dialGestureNotice = LocalizedMessage("旋钮设置未能写入设备，双击功能暂不可用。请重新连接设备后重试。")
+                }
+            }
+        }
+    }
+
+    private func cancelDialClicks() {
+        dialClickGeneration = UUID()
+        dialClickTimer?.invalidate(); dialClickTimer = nil
+        dialClicks.cancel()
+    }
+
+    private func dialCapturePressed() {
+        guard dialGestureReady, !dialGestureBusy, !applyingProfile, !quitting, connected else { return }
+        if !DialSingleAction.canPost {
+            dialGestureNotice = LocalizedMessage("双击功能已暂停，请在权限检查窗口中恢复辅助功能权限。")
+            syncDialGesture()
+            return
+        }
+        let actions = dialClicks.press(at: ProcessInfo.processInfo.systemUptime, interval: dialDoubleClickInterval)
+        performDialActions(actions)
+        scheduleDialDeadline()
+    }
+
+    private func scheduleDialDeadline() {
+        dialClickTimer?.invalidate(); dialClickTimer = nil
+        guard let deadline = dialClicks.deadline else { return }
+        let generation = dialClickGeneration
+        let timer = Timer(timeInterval: max(0.001, deadline - ProcessInfo.processInfo.systemUptime), repeats: false) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self, self.dialClickGeneration == generation, self.dialClicks.deadline == deadline else { return }
+                let actions = self.dialClicks.expire(at: ProcessInfo.processInfo.systemUptime)
+                self.performDialActions(actions)
+                self.scheduleDialDeadline()
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        dialClickTimer = timer
+    }
+
+    private func performDialActions(_ actions: [DialClicks.Action]) {
+        guard dialGestureReady, !applyingProfile, !dialGestureBusy, !quitting, connected else { return }
+        for action in actions {
+            switch action {
+            case .double:
+                dialClickTimer?.invalidate(); dialClickTimer = nil
+                cycleDialProfile()
+            case .single:
+                if appBindings["dialP"] != nil { fireAppBinding(slot: "dialP") }
+                else {
+                    do { try DialSingleAction.perform(originalDialTokens) }
+                    catch { dialGestureNotice = LocalizedMessage("无法执行旋钮单击动作，请检查辅助功能权限。") }
+                }
+            }
+        }
+    }
+
+    private func cycleDialProfile() {
+        guard !applyingProfile, !dialGestureBusy, !quitting, connected, slotsHydrated else { return }
+        guard let next = ProfileCycle.next(names: profileNames, current: activeName),
+              let profile = loadProfiles()[next] else {
+            let message = LocalizedMessage("只有一个配置，无需切换。")
+            sentinelNotice = message
+            ProfileNotifications.shared.post(message.rendered())
+            return
+        }
+        let progress = LocalizedMessage("正在切换到：{0}", next)
+        sentinelNotice = progress
+        ProfileNotifications.shared.post(progress.rendered())
+        setActive(next)
+        activeUpdatedAt = profile.updatedAt.map { Date(timeIntervalSince1970: $0) }
+        applyProfile(profile, notifyName: next)
+    }
+
+    private func prepareDialQuit(completion: @escaping (Bool) -> Void) {
+        quitting = true
+        dialPermissionProbe.cancel()
+        cancelDialClicks()
+        dialGestureReady = false
+        dialGestureGeneration = UUID()
+        let quitGeneration = dialGestureGeneration
+        guard let record = dialRestore else { completion(true); return }
+        guard let device = dev, connected else { quitting = false; completion(false); return }
+        // Wait behind outstanding writes so none can re-install capture after restoration.
+        io.async {
+            let ok = (try? Self.writeDial(record, to: device)) == true
+            DispatchQueue.main.async {
+                guard self.quitting, self.dialGestureGeneration == quitGeneration else { completion(false); return }
+                if ok {
+                    self.persistDialRestore(nil)
+                    HotKeyCenter.shared.unregister("dialGesture")
+                } else { self.quitting = false }
+                self.dialGestureBusy = false
+                completion(ok)
+            }
+        }
+    }
+}
+
+// MARK: - Permission recovery (process-scoped, not tied to settings windows)
+extension VibeVM {
+    private func awaitDialPermission() {
+        dialPermissionPending = true
+        defaults.set(true, forKey: "dialDoubleClick.pendingEnable")
+        dialGestureNotice = LocalizedMessage("请在权限检查窗口中完成授权，App 会自动检测。")
+    }
+
+    func resumeDialAfterAuthorization() {
+        guard DialSingleAction.accessibilityTrusted, DialSingleAction.canPost else { return }
+        clearDialPermissionRequest()
+        dialGestureNotice = nil
+        syncDialGesture()
+    }
+
+    private func clearDialPermissionRequest() {
+        dialPermissionPending = false
+        dialPermissionRestartRequired = false
+        dialPermissionFlow.cancel()
+        dialPermissionProbe.cancel()
+        defaults.removeObject(forKey: "dialDoubleClick.pendingEnable")
+    }
+
+    private func startDialPermissionMonitoring() {
+        AppLifecycle.checkPermission = { [weak self] in self?.checkDialPermission(forceFresh: true) }
+        let effect = dialPermissionFlow.resume(pending: dialPermissionPending || dialDoubleClickEnabled,
+                                              trusted: DialSingleAction.accessibilityTrusted,
+                                              canPost: DialSingleAction.canPost)
+        switch effect {
+        case .enable:
+            // A newly launched process consumes the user's saved enable request.
+            clearDialPermissionRequest()
+        case .requestPermission: awaitDialPermission()
+        case .promptRestart: awaitDialPermission(); promptDialPermissionRestart()
+        case .none: break
+        }
+        let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.checkDialPermission() }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        dialPermissionTimer = timer
+        PermissionCenter.shared.authorizationReady = { [weak self] in self?.resumeDialAfterAuthorization() }
+        PermissionCenter.shared.start()
+    }
+
+    private func checkDialPermission(forceFresh: Bool = false) {
+        guard !quitting else { return }
+        if dialPermissionFlow.phase == .idle, dialDoubleClickEnabled, !DialSingleAction.canPost {
+            let effect = dialPermissionFlow.request(trusted: DialSingleAction.accessibilityTrusted, canPost: false)
+            awaitDialPermission()
+            cancelDialClicks()
+            dialGestureReady = false
+            if !applyingProfile, !dialGestureBusy { syncDialGesture() }
+            if effect == .promptRestart { promptDialPermissionRestart() }
+        }
+        guard dialPermissionFlow.phase == .waiting else { return }
+        if dialPermissionFlow.observe(trusted: DialSingleAction.accessibilityTrusted) == .promptRestart {
+            promptDialPermissionRestart()
+            return
+        }
+        // CG/AX queries can remain stale in a running process. Probe the same signed
+        // executable without UI, prompts, device access or event injection.
+        let now = ProcessInfo.processInfo.systemUptime
+        guard forceFresh || now >= dialPermissionNextProbe else { return }
+        dialPermissionNextProbe = now + 3
+        dialPermissionProbe.check { [weak self] trusted in
+            guard let self, !self.quitting,
+                  self.dialPermissionFlow.observe(trusted: trusted == true) == .promptRestart else { return }
+            self.promptDialPermissionRestart()
+        }
+    }
+
+    private func promptDialPermissionRestart() {
+        dialPermissionRestartRequired = true
+        dialGestureNotice = LocalizedMessage("权限配置完成后，App 将自动重启。")
     }
 }

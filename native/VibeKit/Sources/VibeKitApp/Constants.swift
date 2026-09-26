@@ -73,3 +73,5 @@ let OPEN_APP_TOKEN = "__openApp__"
 // 对「选中已经选中的那项」不会回调 set —— 只有一项的话它就是个死项，用户点了没反应，
 // 得先切成别的键再切回来才能换绑。
 let OPEN_APP_PICK_TOKEN = "__openAppPick__"
+
+let CYCLE_PROFILES_TOKEN = "__cycleProfiles__"

@@ -13,6 +13,13 @@
    * ------------------------------------------------------------------ */
   var I18N = {
     zh: {
+      "dialDemo.seconds": "秒",
+      "dialDemo.switched": "已切换到：",
+      "dialDemo.note": "默认开启 · 0.1–1 秒。单击等待后执行原动作；双击只切换配置。此处为网页演示，不会修改设备。",
+      "dialDemo.simulate": "模拟双击",
+      "dialDemo.down": "减少双击间隔",
+      "dialDemo.up": "增加双击间隔",
+      "dialDemo.title": "双击切换配置",
       "meta.title": "Open VibeKey — VibeKey 硬件配置工具",
 
       "hero.kicker": "VibeKey 硬件配置工具 · 原生 macOS 版",
@@ -128,8 +135,8 @@
       "features.f5.desc": "指示灯模式与三档亮度，可选全灭 / 全亮 / 工作模式，各灯可单独设常亮或呼吸。",
       "features.f6.title": "电源管理",
       "features.f6.desc": "待机时长、休眠时长可调，一键重启设备。",
-      "features.f7.title": "多套配置",
-      "features.f7.desc": "配置存档，可新增多套随时切换，出差、工作室、居家各留一套。",
+      "features.f7.title": "双击旋钮切换配置",
+      "features.f7.desc": "保存工作、编程或居家等配置，双击旋钮即可循环切换并通知。默认开启，间隔默认 0.5 秒，可用上下按钮调整并自动保存。需 App 在后台运行及辅助功能权限。",
       "features.f8.title": "开机自启",
       "features.f8.desc": "登录 macOS 即自动启动，配置一次，之后无需再操心。",
       "features.f10.title": "一键跳 App",
@@ -157,6 +164,13 @@
     },
 
     en: {
+      "dialDemo.seconds": "s",
+      "dialDemo.switched": "Switched to:",
+      "dialDemo.note": "Always enabled · 0.1–1 s. Single clicks wait before their original action; double clicks only switch profiles. This web demo does not change your device.",
+      "dialDemo.simulate": "Simulate double-click",
+      "dialDemo.down": "Decrease double-click interval",
+      "dialDemo.up": "Increase double-click interval",
+      "dialDemo.title": "Double-click profiles",
       "meta.title": "Open VibeKey — Native macOS Configurator for VibeKey",
 
       "hero.kicker": "VibeKey Hardware Configurator · Native for macOS",
@@ -272,8 +286,8 @@
       "features.f5.desc": "Indicator light modes and three brightness levels — off, full, or work mode, with each light set to solid or breathing individually.",
       "features.f6.title": "Power Management",
       "features.f6.desc": "Adjustable standby and sleep durations, plus one-click device reboot.",
-      "features.f7.title": "Multiple Profiles",
-      "features.f7.desc": "Save configurations as profiles and add as many as you need — one for travel, one for the studio, one for home.",
+      "features.f7.title": "Double-click to switch profiles",
+      "features.f7.desc": "Save profiles for work, coding or home. Double-click the dial to cycle through them with a notification. Enabled by default, with an automatically saved interval adjusted using up/down buttons (0.5 s by default). Requires Accessibility access and the app running in the background.",
       "features.f8.title": "Launch at Login",
       "features.f8.desc": "Starts automatically when you log into macOS — set it once and forget about it.",
       "features.f10.title": "Jump to Any App",
@@ -535,6 +549,27 @@
         label.setAttribute("data-vibekey-i18n", panelState.profileKey);
       }
     });
+  }
+
+  function initDialProfileDemo() {
+    var ticks = 5;
+    var value = document.getElementById("dial-interval");
+    var up = document.getElementById("dial-interval-up");
+    var down = document.getElementById("dial-interval-down");
+    function render() {
+      value.textContent = (ticks / 10).toFixed(1);
+      up.disabled = ticks === 10;
+      down.disabled = ticks === 1;
+    }
+    up.addEventListener("click", function () { ticks = Math.min(10, ticks + 1); render(); });
+    down.addEventListener("click", function () { ticks = Math.max(1, ticks - 1); render(); });
+    document.getElementById("dial-profile-demo").addEventListener("click", function () {
+      var keys = ["demo.profile.default", "demo.profile.studio", "demo.profile.travel"];
+      panelState.profileKey = keys[(keys.indexOf(panelState.profileKey) + 1) % keys.length];
+      updateProfileLabels();
+      document.getElementById("dial-profile-status").hidden = false;
+    });
+    render();
   }
 
   function initProfilePicker() {
@@ -1106,6 +1141,7 @@
     initDeviceRows();
     initRefreshButton();
     initProfilePicker();
+    initDialProfileDemo();
     initKeyPopover();
     initShortcutRows();
     initLightingControls();

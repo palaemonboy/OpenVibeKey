@@ -1,4 +1,5 @@
-// AppBinding.swift — 一个槽位「打开 App」绑定的持久化载体。
+// AppBinding.swift — 槽位的主机动作绑定。保留旧类型和存储键以兼容已有配置；
+// action 为 nil 时打开 App，cycleProfiles 时循环切换配置。两者共用哨兵生命周期。
 //
 // 放在 VibeKitHost 而非 VibeVM 旁边：它是纯 Codable 值类型，与 SentinelCombo 成对，
 // 放这里 VibeKitHostProbe 才能断言它的 Codable 往返。Profile 仍在 VibeVM.swift。
@@ -11,6 +12,9 @@ public struct AppBinding: Codable, Equatable, Sendable {
     public var displayName: String
     /// 分配到的哨兵 token，如 ["LCtrl","LOpt","LCmd","F9"]。
     public var sentinelTokens: [String]
+    /// nil preserves the meaning of bindings saved before host actions were added.
+    public var action: HostAction? = nil
+    public var cyclesProfiles: Bool { action == .cycleProfiles }
 
     public init(bundleID: String, displayName: String, sentinelTokens: [String]) {
         self.bundleID = bundleID
@@ -26,5 +30,19 @@ public struct AppBinding: Codable, Equatable, Sendable {
     /// 紧凑展示，如 "⌃⌥⌘F9"。
     public var sentinelDisplay: String? {
         sentinelMainKey.map { SentinelCombo(mainKey: $0).display }
+    }
+}
+
+public enum HostAction: String, Codable, Sendable {
+    case cycleProfiles
+}
+
+/// Uses the same stable name order as the profile picker. A single profile is a no-op.
+public enum ProfileCycle {
+    public static func next(names: [String], current: String) -> String? {
+        let ordered = Array(Set(names)).sorted()
+        guard ordered.count > 1 else { return nil }
+        guard let index = ordered.firstIndex(of: current) else { return ordered.first }
+        return ordered[(index + 1) % ordered.count]
     }
 }

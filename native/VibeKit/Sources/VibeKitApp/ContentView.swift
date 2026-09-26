@@ -102,6 +102,7 @@ struct ContentView: View {
         .animation(.spring(response: 0.45, dampingFraction: 0.85), value: vm.linkPresent)
         // LSUIElement 应用关窗后整个 App 在 Dock/⌘Tab 里完全隐形，用户无法再回到窗口点"停止"，
         // 所以电平表必须在窗口消失时自己停，否则 AVAudioEngine 和麦克风占用会一直挂着退不掉。
+        .onAppear { PermissionCenter.shared.presentIfNeeded() }
         .onDisappear { mic.stop() }
     }
 
@@ -298,7 +299,7 @@ struct ContentView: View {
     var offlineAppBindingsCard: some View {
         let rows = vm.appBindingRows
         if !rows.isEmpty {
-            Card(title: L("「打开 App」绑定 · 仍在生效"), systemImage: "bolt.horizontal.circle",
+            Card(title: L("主机动作绑定"), systemImage: "bolt.horizontal.circle",
                  subtitle: L("设备虽然没连上，但 Open VibeKey 还在运行——下面这些组合键仍然被本程序全局截获。")) {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(rows) { r in
@@ -358,6 +359,7 @@ struct ContentView: View {
                 // 标定属调试功能：默认隐藏，连点 ℹ️ 设备信息 5 次解锁。
                 if debugUnlocked {
                     Button(L("标定")) { vm.runProbe(); showDialCal.toggle() }
+                        .disabled(vm.dialDoubleClickEnabled)
                         .buttonStyle(GhostButtonStyle())
                         .popover(isPresented: $showDialCal, arrowEdge: .bottom) { dialCalPopover }
                         .transition(.opacity.combined(with: .scale))
@@ -375,6 +377,36 @@ struct ContentView: View {
                     }
                 }
             }
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    Text(L("双击旋钮切换配置")).lineLimit(1)
+                    Spacer(minLength: 0)
+                    Text(L("间隔")).foregroundStyle(.secondary)
+                    Text(vm.dialDoubleClickInterval, format: .number.precision(.fractionLength(1)))
+                        .monospacedDigit()
+                    Text(L("秒"))
+                    Stepper("", value: Binding<Int>(
+                        get: { Int((vm.dialDoubleClickInterval * 10).rounded()) },
+                        set: { vm.setDialDoubleClickInterval(Double($0) / 10) }), in: 1...10)
+                        .labelsHidden().fixedSize()
+                        .accessibilityLabel(L("双击间隔（秒）"))
+                        .disabled(vm.applyingProfile || vm.dialGestureBusy)
+                }.font(.caption).fixedSize(horizontal: false, vertical: true)
+                Group {
+                    Text(L("全局生效，范围 0.1–1 秒。单击等待此时间后执行；双击仅切换配置。"))
+                        .font(.caption2).foregroundStyle(.secondary)
+                    if vm.dialGestureBusy || vm.applyingProfile {
+                        Text(L("正在更新旋钮设置…")).font(.caption2).foregroundStyle(.secondary)
+                    } else if !vm.dialGestureReady {
+                        Text(L("双击功能暂未就绪")).font(.caption2).foregroundStyle(.orange)
+                    }
+                }
+                if let notice = vm.dialGestureNotice {
+                    Text(notice.rendered()).font(.caption2).foregroundStyle(.orange)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                }
+            }
             ForEach(vm.dial.indices, id: \.self) { i in
                 // 三个方向共用同一个编辑器；「打开 App」是否出现由 ShortcutEditor 按
                 // APP_BINDABLE_SLOTS 自行判断，这里无脑接上即可（dialL/dialR 不在名单内）。
@@ -384,8 +416,10 @@ struct ContentView: View {
                                onBindApp: { app in
                                    vm.bindApp(slot: vm.dial[i].id, bundleID: app.bundleID, displayName: app.name)
                                },
-                               onUnbindApp: { vm.unbindApp(slot: vm.dial[i].id) })
+                               onUnbindApp: { vm.unbindApp(slot: vm.dial[i].id) },
+                               onCycleProfiles: { vm.bindProfileCycle() })
                     .equatable()
+                    .disabled(vm.applyingProfile || (vm.dial[i].id == "dialP" && vm.dialGestureBusy))
             }
         }
     }

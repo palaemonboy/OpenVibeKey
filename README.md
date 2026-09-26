@@ -12,7 +12,9 @@
 
 Make your VibeKey work your way on macOS.
 
-Open VibeKey is a free, open-source macOS app for VibeKey / Kehwin Dial Mini (AU05). Customize the dial and buttons, adjust lighting and microphone settings, and choose your Mac’s audio input—all from a settings window and a menu bar panel.
+Open VibeKey is a free, open-source macOS app for Ulanzi AU05 Vibe Key. Customize the dial and buttons, adjust lighting and microphone settings, and choose your Mac’s audio input—all from a settings window and a menu bar panel.
+
+Buy the device: [Ulanzi AU05 Vibe Key](https://www.ulanzi.com/products/au05-vibe-key-ai-voice-input-keypad-i018).
 
 ![Open VibeKey settings and menu bar panel — English interface preview](assets/screenshots/open-vibekey-en.png)
 
@@ -21,7 +23,7 @@ Open VibeKey is a free, open-source macOS app for VibeKey / Kehwin Dial Mini (AU
 ## Requirements
 
 - macOS 13 or later.
-- A VibeKey / Kehwin Dial Mini (AU05) and its receiver for device controls.
+- A Ulanzi AU05 Vibe Key and its receiver for device controls.
 
 ## Installation
 
@@ -46,6 +48,7 @@ Open VibeKey stays in the menu bar, so it does not appear in the Dock.
 - **Custom shortcuts:** Assign keyboard shortcuts or media actions to the buttons, dial turns, and dial press.
 - **Open apps:** Use a button or the dial press to launch or switch to a chosen app.
 - **Profiles:** Save different setups and switch between them from the menu bar.
+- **Double-click the dial to switch profiles:** Enabled by default. Press the dial twice within the interval to cycle through saved profiles and receive a notification, without triggering the single-click action. A single click waits until the interval expires before performing its original action. Use the up/down buttons to adjust the global interval in 0.1 s steps (default 0.5 s; range 0.1–1 s); changes save automatically. Requires Accessibility access and the app running in the background, even with the main window closed. Other buttons and dial rotation are unchanged.
 - **Lighting controls:** Adjust global lighting, brightness, and individual lights in Work mode.
 - **Microphone controls:** Toggle the device microphone, choose a noise-reduction level, and adjust input volume.
 - **Audio input selection:** Switch between your VibeKey microphone, your Mac’s built-in microphone, and other available inputs. Lock your preferred input to prevent unwanted switching.
@@ -56,8 +59,20 @@ Open VibeKey stays in the menu bar, so it does not appear in the Dock.
 
 - Ordinary keyboard shortcuts saved to the device continue to work after you quit Open VibeKey. **Open App** actions require Open VibeKey to remain running.
 - Open App bindings can conflict with shortcuts used by other software. If an action does not respond, check for shortcut conflicts.
-- macOS may ask for microphone access when you use the live input level meter.
+- Grant microphone access from the startup permission window to use the live input level meter.
 - Device controls require the AU05 to be powered on; connecting the receiver alone is not enough.
+
+## Local development
+
+**Double-click dial to switch profiles** is always enabled; there is no toggle. A single press waits for the configurable interval (default 0.5 s, range 0.1–1 s, adjusted with up/down buttons and saved automatically) before executing its existing action; a double press only switches profiles and sends a notification. Other buttons and dial rotation keep their existing behavior. Accessibility access is required to replay delayed shortcuts and media keys.
+
+At startup, a unified window checks Accessibility, microphone and notification permissions. Each Settings button opens the corresponding system pane; polling never opens System Settings or requests access. The window can only close after all permissions are granted, but Quit remains available. Newly completed authorization opens the main window directly when access is already effective. Only stale in-process permission state requires one restart, followed by opening the main window. Closing the main window keeps the menu-bar listener running. Notifications acknowledge switching immediately and confirm the result after device writes finish.
+
+The app temporarily takes over the dial press while enabled, preserving the original single action in each profile. Quitting normally restores the device setting. Failed restoration is reported before quitting; after a force quit or crash, reconnect and launch the app to recover. See [manual dial tests](scripts/dial-double-click-testing.md).
+
+Run `bash scripts/setup-dev-signing.sh` once to create a local code-signing identity in your login keychain (macOS may request authorization). Then run `bash scripts/make-app-dev.sh` to create `dist/Open VibeKey Dev.app`. This build uses separate preferences and a bundle identifier, skips legacy migration, and leaves the installed app intact. It reuses the local certificate, pins its designated requirement to that certificate and bundle ID, ignores `SIGN_IDENTITY`, and requires neither an Apple ID nor notarization. Missing identities stop the build rather than falling back to ad-hoc signing. Do not recreate the certificate between builds. Migrating from the old ad-hoc build may require removing and re-adding the app in Privacy settings once.
+
+Quit the installed app from the menu bar before opening the development build so only one app controls the device. Device settings are still shared hardware state. Quit the development build before returning to the installed app.
 
 ## Project Structure
 

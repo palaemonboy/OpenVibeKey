@@ -8,6 +8,7 @@ import VibeKitHost
 
 struct ShortcutEditor: View {
     @ObservedObject private var language = AppLanguage.shared
+    private let renderedLanguage = AppLanguage.shared.resolved
     @Binding var b: ButtonState
     let onApply: () -> Void
     let onClear: () -> Void
@@ -15,13 +16,14 @@ struct ShortcutEditor: View {
     var onBindApp: (InstalledApp) -> Void = { _ in }
     /// 清除「打开 App」绑定。与 onClear 分开：清绑定要额外注销热键。
     var onUnbindApp: () -> Void = {}
+    var onCycleProfiles: () -> Void = {}
 
     @State private var hover = false
     @State private var showAppPicker = false
 
     // 只有 btn1/2/3/dialP 能绑 App。旋钮左转/右转不行——连续转动会连发哨兵键。
     private var allowsAppBinding: Bool { APP_BINDABLE_SLOTS.contains(b.id) }
-    private var isAppBound: Bool { b.appName != nil }
+    private var isAppBound: Bool { b.appName != nil || b.cyclesProfiles }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -39,15 +41,17 @@ struct ShortcutEditor: View {
                 // 修饰键/主键任一改动即写入设备（无「应用」按钮）。只在用户交互处触发，
                 // 不用 onChange —— 否则设备回读回填也会被当成改动，形成写-读-写循环。
                 ForEach(MODS, id: \.token) { m in
-                    let on = b.mods.contains(m.token)
+                    let on = !b.cyclesProfiles && b.mods.contains(m.token)
                     Text(m.label)
                         .frame(width: 28, height: 26)
                         .background(on ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(Color.primary.opacity(0.06)),
                                     in: RoundedRectangle(cornerRadius: 7, style: .continuous))
                         .foregroundStyle(on ? Color.white : .primary)
+                        .opacity(b.cyclesProfiles ? 0.4 : 1)
                         .scaleEffect(on ? 1.08 : 1)
                         .contentShape(Rectangle())
                         .onTapGesture {
+                            guard !b.cyclesProfiles else { return }
                             if on { b.mods.remove(m.token) } else { b.mods.insert(m.token) }
                             onApply()
                         }
@@ -57,13 +61,20 @@ struct ShortcutEditor: View {
                 // 选中它只是开 sheet、不改状态，所以用户取消时 SwiftUI 重读 get 自然回退，
                 // 不需要额外存一份「选中前的值」再回滚。
                 Picker("", selection: Binding<String?>(
-                    get: { isAppBound ? OPEN_APP_TOKEN : b.mainKey },
+                    get: { b.cyclesProfiles ? CYCLE_PROFILES_TOKEN : (isAppBound ? OPEN_APP_TOKEN : b.mainKey) },
                     set: { v in
                         if v == OPEN_APP_TOKEN || v == OPEN_APP_PICK_TOKEN { showAppPicker = true }
-                        else { b.mainKey = v; onApply() }
+                        else if v == CYCLE_PROFILES_TOKEN { onCycleProfiles() }
+                        else {
+                            if b.cyclesProfiles { b.mods = [] }
+                            b.mainKey = v; onApply()
+                        }
                     })) {
                     Text(L("主键")).tag(String?.none)
                     ForEach(MAIN_KEYS, id: \.token) { k in Text(L(k.label)).tag(String?.some(k.token)) }
+                    if b.cyclesProfiles {
+                        Text(L("循环切换配置")).tag(String?.some(CYCLE_PROFILES_TOKEN))
+                    }
                     if allowsAppBinding {
                         Divider()
                         if let name = b.appName {
@@ -75,10 +86,15 @@ struct ShortcutEditor: View {
                             Text(L("打开 App…")).tag(String?.some(OPEN_APP_TOKEN))
                         }
                     }
-                }.labelsHidden().frame(width: 100).fixedSize()
+                }.id(language.resolved)
+                    .labelsHidden().frame(width: language.resolved == .english ? 160 : (b.id == "dialP" ? 140 : 100)).fixedSize()
                 Spacer(minLength: 6)
                 Button(L("清除")) { if isAppBound { onUnbindApp() } else { onClear() } }
                     .buttonStyle(GhostButtonStyle()).fixedSize()
+            }
+            if b.cyclesProfiles {
+                Text(L("这是旧版单击切换动作。使用双击开关时，请将单击改为所需的快捷键、媒体键或 App。"))
+                    .font(.caption2).foregroundStyle(.secondary)
             }
             if isAppBound {
                 // 三种小字互不排斥，各说各的事，所以逐条判断而不是 if/else 三选一：
@@ -136,10 +152,13 @@ struct ShortcutEditor: View {
 // 连三秒一次的电量轮询也会把六个全建一遍。实测「选中一项」这一下要 ~150ms 主线程，
 // 用户看到的就是一顿。声明 Equatable 后由 EquatableView 挡住，只有真的变了的那个会重建。
 //
-// 只比 b：@State 的变化走的是 SwiftUI 自己的失效路径，不受这里影响；闭包捕获的是 vm
+// Compare the language snapshot too, so unchanged bindings refresh on language changes.
+// @State 的变化走的是 SwiftUI 自己的失效路径；闭包捕获的是 vm
 // 与固定下标，跳过重建不会让它们变陈旧。
 extension ShortcutEditor: Equatable {
-    static func == (l: ShortcutEditor, r: ShortcutEditor) -> Bool { l.b == r.b }
+    static func == (l: ShortcutEditor, r: ShortcutEditor) -> Bool {
+        l.b == r.b && l.renderedLanguage == r.renderedLanguage
+    }
 }
 
 /// 橙色警告小字（⚠️ + 文案）。行内与离线区块共用同一套观感。
@@ -427,6 +446,8 @@ struct DeviceImageView: View {
 
 /// Only translate app-owned shortcut labels. User app and device names are never lookup keys.
 func localizedShortcut(_ state: ButtonState) -> String {
+    if state.cyclesProfiles { return L("循环切换配置") }
     if let name = state.appName { return L("打开 App：{0}", name) }
+    if let media = MEDIA_KEYS.first(where: { $0.token == state.mainKey }) { return L(media.label) }
     return L(state.current).replacingOccurrences(of: "空格", with: L("空格"))
 }
